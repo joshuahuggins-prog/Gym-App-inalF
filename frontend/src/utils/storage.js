@@ -437,4 +437,91 @@ export const resetAllLocalData = async () => {
     return false;
   }
 };
+// ===== Full backup Export/Import (JSON) =====
+
+export const exportAllDataToJSON = () => {
+  try {
+    const payload = {
+      meta: {
+        app: "Gym-App-inalF",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+      },
+      data: {
+        workouts: getWorkouts(),
+        settings: getSettings(),
+        bodyWeights: getBodyWeights(),
+        personalRecords: getPersonalRecords(),
+        videoLinks: getVideoLinks(),
+        programmes: getProgrammes(),
+        exercises: getExercises(),
+        progressionSettings: getProgressionSettings(),
+        // include these only if you already created them:
+        workoutPattern: typeof getWorkoutPattern === "function" ? getWorkoutPattern() : null,
+        workoutPatternIndex:
+          typeof getWorkoutPatternIndex === "function" ? getWorkoutPatternIndex() : null,
+      },
+    };
+
+    return JSON.stringify(payload, null, 2);
+  } catch (e) {
+    console.error("Failed to export all data", e);
+    return null;
+  }
+};
+
+export const importAllDataFromJSON = (jsonText, options = { merge: false }) => {
+  try {
+    const parsed = JSON.parse(jsonText);
+    const backup = parsed?.data ? parsed : { data: parsed };
+    const data = backup.data || {};
+
+    const looksValid =
+      data.workouts ||
+      data.settings ||
+      data.programmes ||
+      data.exercises ||
+      data.progressionSettings;
+
+    if (!looksValid) {
+      return { success: false, error: "This file doesn't look like a valid full backup." };
+    }
+
+    // Workouts: overwrite or merge by id
+    if (Array.isArray(data.workouts)) {
+      if (options.merge) {
+        const existing = getWorkouts();
+        const byId = new Map(existing.map((w) => [w.id, w]));
+        data.workouts.forEach((w) => {
+          if (w?.id) byId.set(w.id, w);
+        });
+        setStorageData(STORAGE_KEYS.WORKOUTS, Array.from(byId.values()));
+      } else {
+        setStorageData(STORAGE_KEYS.WORKOUTS, data.workouts);
+      }
+    }
+
+    if (data.settings) setStorageData(STORAGE_KEYS.SETTINGS, data.settings);
+    if (Array.isArray(data.bodyWeights)) setStorageData(STORAGE_KEYS.BODY_WEIGHT, data.bodyWeights);
+    if (data.personalRecords) setStorageData(STORAGE_KEYS.PERSONAL_RECORDS, data.personalRecords);
+    if (data.videoLinks) setStorageData(STORAGE_KEYS.VIDEO_LINKS, data.videoLinks);
+    if (Array.isArray(data.programmes)) setStorageData(STORAGE_KEYS.PROGRAMMES, data.programmes);
+    if (Array.isArray(data.exercises)) setStorageData(STORAGE_KEYS.EXERCISES, data.exercises);
+    if (data.progressionSettings)
+      setStorageData(STORAGE_KEYS.PROGRESSION_SETTINGS, data.progressionSettings);
+
+    // Optional pattern restore (only if your STORAGE_KEYS contains these)
+    if (data.workoutPattern != null && STORAGE_KEYS.WORKOUT_PATTERN) {
+      setStorageData(STORAGE_KEYS.WORKOUT_PATTERN, data.workoutPattern);
+    }
+    if (data.workoutPatternIndex != null && STORAGE_KEYS.WORKOUT_PATTERN_INDEX) {
+      setStorageData(STORAGE_KEYS.WORKOUT_PATTERN_INDEX, data.workoutPatternIndex);
+    }
+
+    return { success: true };
+  } catch (e) {
+    console.error("Failed to import all data", e);
+    return { success: false, error: `Import failed: ${e.message}` };
+  }
+};
 export default STORAGE_KEYS;
