@@ -5,8 +5,15 @@ import { Badge } from '../components/ui/badge';
 import ExerciseCard from '../components/ExerciseCard';
 import RestTimer from '../components/RestTimer';
 import PRCelebration from '../components/PRCelebration';
-import { getNextWorkoutType } from '../data/workoutData';
-import { getWorkouts, saveWorkout, getSettings, updatePersonalRecord, getPersonalRecords, getProgrammes, getProgressionSettings } from '../utils/storage';
+import {
+  getWorkouts,
+  saveWorkout,
+  updatePersonalRecord,
+  getPersonalRecords,
+  getProgrammes,
+  getProgressionSettings,
+  getNextWorkoutTypeFromPattern,
+} from "../utils/storage";
 import { useSettings } from '../contexts/SettingsContext';
 import { toast } from 'sonner';
 
@@ -33,9 +40,22 @@ const HomePage = ({ onDataChange, onSaved }) => {
   const loadTodaysWorkout = () => {
     const workouts = getWorkouts();
     const programmes = getProgrammes();
-    const lastWorkout = workouts[0];
-    const nextType = lastWorkout ? getNextWorkoutType(lastWorkout.type) : 'A';
-    const workout = programmes.find(p => p.type === nextType) || programmes[0];
+   const lastWorkout = workouts[0];
+
+// Only programmes with 1+ exercises should be eligible
+const usableProgrammes = programmes.filter(
+  (p) => Array.isArray(p.exercises) && p.exercises.length > 0
+);
+
+if (usableProgrammes.length === 0) {
+  toast.error("No usable programmes found. Add at least 1 exercise to a programme.");
+  return;
+}
+
+const nextType = getNextWorkoutTypeFromPattern();
+const workout =
+  usableProgrammes.find((p) => String(p.type).toUpperCase() === String(nextType).toUpperCase()) ||
+  usableProgrammes[0];
     
     if (!workout) {
       toast.error('No programmes found. Please create a programme first.');
@@ -43,7 +63,9 @@ const HomePage = ({ onDataChange, onSaved }) => {
     }
     
     // Find the last time this workout was done
-    const lastSameWorkout = workouts.find(w => w.type === nextType);
+    const lastSameWorkout = workouts.find(
+  (w) => String(w.type).toUpperCase() === String(nextType).toUpperCase()
+);
     
     setCurrentWorkout(workout);
     setWorkoutData(workout.exercises.map(ex => {
