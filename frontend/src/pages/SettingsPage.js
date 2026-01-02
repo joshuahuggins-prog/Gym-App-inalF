@@ -238,5 +238,31 @@ const SettingsPage = () => {
     </div>
   );
 };
+<div className="bg-card border border-border rounded-xl p-6 mt-6">
+  <h2 className="text-xl font-bold text-foreground mb-2">Danger zone</h2>
+  <p className="text-sm text-muted-foreground mb-4">
+    This deletes all workouts, stats, programmes and settings stored on this device. It cannot be undone.
+  </p>
+
+  <button
+    className="px-4 py-2 rounded-lg border border-red-500 text-red-600"
+    onClick={() => {
+      const ok = window.confirm(
+        "Reset app?\n\nThis will permanently delete ALL data on this device."
+      );
+      if (!ok) return;
+
+      const done = resetAllLocalData();
+      if (done) {
+        alert("All local data deleted.");
+        window.location.reload();
+      } else {
+        alert("Reset failed. See console for details.");
+      }
+    }}
+  >
+    Reset app
+  </button>
+</div>
 
 export default SettingsPage;
