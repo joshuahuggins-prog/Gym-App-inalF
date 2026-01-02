@@ -1,10 +1,11 @@
 module.exports = {
   webpack: {
     configure: (webpackConfig) => {
-      // Remove ForkTsCheckerWebpackPlugin to avoid AJV/schema-utils keyword conflicts in CI
-      webpackConfig.plugins = webpackConfig.plugins.filter(
-        (plugin) => plugin.constructor && plugin.constructor.name !== "ForkTsCheckerWebpackPlugin"
-      );
+      webpackConfig.plugins = (webpackConfig.plugins || []).filter((plugin) => {
+        const name = plugin?.constructor?.name || "";
+        // Remove Fork TS checker plugin (and any variant)
+        return !name.toLowerCase().includes("forktschecker");
+      });
       return webpackConfig;
     },
   },
