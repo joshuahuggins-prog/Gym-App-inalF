@@ -358,9 +358,17 @@ export const importFromCSV = (csvText) => {
     };
   }
 };
-export const resetAllLocalData = () => {
+xport const resetAllLocalData = async () => {
   try {
+    // Remove only your app’s localStorage keys
     Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+
+    // Clear Service Worker caches (if supported)
+    if ("caches" in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map((name) => caches.delete(name)));
+    }
+
     return true;
   } catch (e) {
     console.error("Failed to reset local data", e);
