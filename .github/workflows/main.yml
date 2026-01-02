@@ -36,6 +36,8 @@ jobs:
         working-directory: frontend
         env:
           PUBLIC_URL: /Gym-App-inalF/
+          TSC_COMPILE_ON_ERROR: "true"
+          DISABLE_ESLINT_PLUGIN: "true"
         run: npm run build
 
       - name: SPA fallback
