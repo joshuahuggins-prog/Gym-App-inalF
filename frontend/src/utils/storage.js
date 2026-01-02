@@ -358,5 +358,14 @@ export const importFromCSV = (csvText) => {
     };
   }
 };
+export const resetAllLocalData = () => {
+  try {
+    Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+    return true;
+  } catch (e) {
+    console.error("Failed to reset local data", e);
+    return false;
+  }
+};
 
 export default STORAGE_KEYS;
