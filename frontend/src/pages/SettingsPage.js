@@ -265,6 +265,7 @@ const handleResetApp = async () => {
           <Button
             onClick={handleResetApp}
             size="lg"
+            variant="destructive"
             className="w-full bg-red-600 hover:bg-red-700 text-white"
           >
             Reset app
