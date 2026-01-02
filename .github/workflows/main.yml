@@ -32,6 +32,7 @@ jobs:
           rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps
 
+
       - name: Build
         working-directory: frontend
         env:
