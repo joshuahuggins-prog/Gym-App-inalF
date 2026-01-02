@@ -32,20 +32,19 @@ jobs:
           rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps
 
-
       - name: Build
         working-directory: frontend
         env:
           PUBLIC_URL: /Gym-App-inalF/
-          TSC_COMPILE_ON_ERROR: "true"
-          DISABLE_ESLINT_PLUGIN: "true"
         run: npm run build
 
-      - name: SPA fallback
+      - name: Ensure index.html exists
         run: |
-          if [ -f frontend/build/index.html ]; then
-            cp frontend/build/index.html frontend/build/404.html
-          fi
+          test -f frontend/build/index.html
+
+      - name: SPA fallback (optional)
+        run: |
+          cp frontend/build/index.html frontend/build/404.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
