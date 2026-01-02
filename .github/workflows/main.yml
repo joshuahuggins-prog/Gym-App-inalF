@@ -29,14 +29,13 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: |
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
+          yarn install --ignore-engines
 
       - name: Build
         working-directory: frontend
         env:
           PUBLIC_URL: /Gym-App-inalF/
-        run: npm run build
+        run: yarn build
 
       - name: Ensure index.html exists
         run: |
