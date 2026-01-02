@@ -358,7 +358,7 @@ export const importFromCSV = (csvText) => {
     };
   }
 };
-xport const resetAllLocalData = async () => {
+export const resetAllLocalData = async () => {
   try {
     // Remove only your app’s localStorage keys
     Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
