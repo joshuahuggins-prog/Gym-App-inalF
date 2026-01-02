@@ -364,7 +364,7 @@ export const resetAllLocalData = async () => {
     Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
 
     // Clear Service Worker caches (if supported)
-    if ("caches" in window) {
+    if (typeof caches !== "undefined") {
       const cacheNames = await caches.keys();
       await Promise.all(cacheNames.map((name) => caches.delete(name)));
     }
@@ -375,5 +375,4 @@ export const resetAllLocalData = async () => {
     return false;
   }
 };
-
 export default STORAGE_KEYS;
