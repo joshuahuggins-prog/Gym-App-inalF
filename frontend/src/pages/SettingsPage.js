@@ -5,6 +5,7 @@ import { Input } from '../components/ui/input';
 import { getProgressionSettings, updateProgressionSettings, getExercises } from '../utils/storage';
 import { useSettings } from '../contexts/SettingsContext';
 import { toast } from 'sonner';
+import { resetAllLocalData } from "../utils/storage";
 
 const SettingsPage = () => {
   const { weightUnit, toggleWeightUnit } = useSettings();
