@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Save, TrendingUp, Settings as SettingsIcon } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { getProgressionSettings, updateProgressionSettings, getExercises } from '../utils/storage';
-import { useSettings } from '../contexts/SettingsContext';
-import { toast } from 'sonner';
-import { resetAllLocalData } from "../utils/storage";
+import React, { useState, useEffect } from "react";
+import { Save, TrendingUp, Settings as SettingsIcon, AlertTriangle } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import {
+  getProgressionSettings,
+  updateProgressionSettings,
+  getExercises,
+  resetAllLocalData,
+} from "../utils/storage";
+import { useSettings } from "../contexts/SettingsContext";
+import { toast } from "sonner";
 
 const SettingsPage = () => {
   const { weightUnit, toggleWeightUnit } = useSettings();
@@ -23,7 +27,7 @@ const SettingsPage = () => {
 
   const handleSaveSettings = () => {
     updateProgressionSettings(progressionSettings);
-    toast.success('Settings saved!');
+    toast.success("Settings saved!");
   };
 
   const handleUpdateExerciseProgression = (exerciseId, value) => {
@@ -31,9 +35,31 @@ const SettingsPage = () => {
       ...progressionSettings,
       exerciseSpecific: {
         ...progressionSettings.exerciseSpecific,
-        [exerciseId]: parseFloat(value) || 0
-      }
+        [exerciseId]: parseFloat(value) || 0,
+      },
     });
+  };
+
+  const handleResetApp = () => {
+    const ok = window.confirm(
+      "Reset app?\n\nThis will permanently delete ALL data on this device.\nThis cannot be undone."
+    );
+    if (!ok) return;
+
+    try {
+      const done = resetAllLocalData();
+
+      if (done === false) {
+        toast.error("Reset failed. See console for details.");
+        return;
+      }
+
+      toast.success("All local data deleted. Reloading…");
+      setTimeout(() => window.location.reload(), 600);
+    } catch (e) {
+      console.error(e);
+      toast.error("Reset failed. See console for details.");
+    }
   };
 
   if (!progressionSettings) return null;
@@ -43,9 +69,7 @@ const SettingsPage = () => {
       {/* Header */}
       <div className="bg-gradient-to-b from-card to-background border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-gradient-primary mb-2">
-            Settings
-          </h1>
+          <h1 className="text-3xl font-bold text-gradient-primary mb-2">Settings</h1>
           <p className="text-sm text-muted-foreground">
             Configure progression and app preferences
           </p>
@@ -64,15 +88,9 @@ const SettingsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-semibold text-foreground">Weight Unit</div>
-                <div className="text-sm text-muted-foreground">
-                  Toggle between lbs and kg
-                </div>
+                <div className="text-sm text-muted-foreground">Toggle between lbs and kg</div>
               </div>
-              <Button
-                variant="outline"
-                onClick={toggleWeightUnit}
-                className="font-semibold"
-              >
+              <Button variant="outline" onClick={toggleWeightUnit} className="font-semibold">
                 {weightUnit}
               </Button>
             </div>
@@ -94,10 +112,12 @@ const SettingsPage = () => {
               <Input
                 type="number"
                 value={progressionSettings.globalIncrementLbs}
-                onChange={(e) => setProgressionSettings({
-                  ...progressionSettings,
-                  globalIncrementLbs: parseFloat(e.target.value) || 5
-                })}
+                onChange={(e) =>
+                  setProgressionSettings({
+                    ...progressionSettings,
+                    globalIncrementLbs: parseFloat(e.target.value) || 5,
+                  })
+                }
                 step="0.5"
                 min="0"
               />
@@ -113,10 +133,12 @@ const SettingsPage = () => {
               <Input
                 type="number"
                 value={progressionSettings.globalIncrementKg}
-                onChange={(e) => setProgressionSettings({
-                  ...progressionSettings,
-                  globalIncrementKg: parseFloat(e.target.value) || 2.5
-                })}
+                onChange={(e) =>
+                  setProgressionSettings({
+                    ...progressionSettings,
+                    globalIncrementKg: parseFloat(e.target.value) || 2.5,
+                  })
+                }
                 step="0.25"
                 min="0"
               />
@@ -124,7 +146,7 @@ const SettingsPage = () => {
 
             <div className="pt-4 border-t border-border">
               <h3 className="font-semibold text-foreground mb-3">RPT Percentages</h3>
-              
+
               <div className="space-y-3">
                 <div>
                   <label className="text-sm font-medium text-foreground block mb-2">
@@ -133,10 +155,12 @@ const SettingsPage = () => {
                   <Input
                     type="number"
                     value={progressionSettings.rptSet2Percentage}
-                    onChange={(e) => setProgressionSettings({
-                      ...progressionSettings,
-                      rptSet2Percentage: parseInt(e.target.value) || 90
-                    })}
+                    onChange={(e) =>
+                      setProgressionSettings({
+                        ...progressionSettings,
+                        rptSet2Percentage: parseInt(e.target.value) || 90,
+                      })
+                    }
                     min="50"
                     max="100"
                   />
@@ -152,10 +176,12 @@ const SettingsPage = () => {
                   <Input
                     type="number"
                     value={progressionSettings.rptSet3Percentage}
-                    onChange={(e) => setProgressionSettings({
-                      ...progressionSettings,
-                      rptSet3Percentage: parseInt(e.target.value) || 80
-                    })}
+                    onChange={(e) =>
+                      setProgressionSettings({
+                        ...progressionSettings,
+                        rptSet3Percentage: parseInt(e.target.value) || 80,
+                      })
+                    }
                     min="50"
                     max="100"
                   />
@@ -170,19 +196,18 @@ const SettingsPage = () => {
 
         {/* Exercise-Specific Progression */}
         <div className="bg-card border border-border rounded-xl p-6">
-          <h2 className="text-xl font-bold text-foreground mb-4">
-            Exercise-Specific Progression
-          </h2>
+          <h2 className="text-xl font-bold text-foreground mb-4">Exercise-Specific Progression</h2>
           <p className="text-sm text-muted-foreground mb-4">
             Override the default progression for specific exercises. Leave at 0 to use global default.
           </p>
 
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {exercises.map(exercise => {
+            {exercises.map((exercise) => {
               const currentValue = progressionSettings.exerciseSpecific[exercise.id] || 0;
-              const defaultValue = weightUnit === 'lbs' 
-                ? progressionSettings.globalIncrementLbs
-                : progressionSettings.globalIncrementKg;
+              const defaultValue =
+                weightUnit === "lbs"
+                  ? progressionSettings.globalIncrementLbs
+                  : progressionSettings.globalIncrementKg;
 
               return (
                 <div
@@ -192,7 +217,10 @@ const SettingsPage = () => {
                   <div className="flex-1">
                     <div className="font-semibold text-foreground">{exercise.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      Using: {currentValue > 0 ? `${currentValue} ${weightUnit}` : `Global (${defaultValue} ${weightUnit})`}
+                      Using:{" "}
+                      {currentValue > 0
+                        ? `${currentValue} ${weightUnit}`
+                        : `Global (${defaultValue} ${weightUnit})`}
                     </div>
                   </div>
                   <div className="w-32">
@@ -226,43 +254,32 @@ const SettingsPage = () => {
         </div>
 
         {/* Save Button */}
-        <Button
-          onClick={handleSaveSettings}
-          size="lg"
-          className="w-full"
-        >
+        <Button onClick={handleSaveSettings} size="lg" className="w-full">
           <Save className="w-5 h-5 mr-2" />
           Save Settings
         </Button>
+
+        {/* Danger Zone */}
+        <div className="bg-card border border-border rounded-xl p-6 mt-2">
+          <h2 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-500" />
+            Danger zone
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            This deletes all workouts, stats, programmes and settings stored on this device. It cannot be undone.
+          </p>
+
+          <Button
+            onClick={handleResetApp}
+            size="lg"
+            className="w-full bg-red-600 hover:bg-red-700 text-white"
+          >
+            Reset app
+          </Button>
+        </div>
       </div>
     </div>
   );
 };
-<div className="bg-card border border-border rounded-xl p-6 mt-6">
-  <h2 className="text-xl font-bold text-foreground mb-2">Danger zone</h2>
-  <p className="text-sm text-muted-foreground mb-4">
-    This deletes all workouts, stats, programmes and settings stored on this device. It cannot be undone.
-  </p>
-
-  <button
-    className="px-4 py-2 rounded-lg border border-red-500 text-red-600"
-    onClick={() => {
-      const ok = window.confirm(
-        "Reset app?\n\nThis will permanently delete ALL data on this device."
-      );
-      if (!ok) return;
-
-      const done = resetAllLocalData();
-      if (done) {
-        alert("All local data deleted.");
-        window.location.reload();
-      } else {
-        alert("Reset failed. See console for details.");
-      }
-    }}
-  >
-    Reset app
-  </button>
-</div>
 
 export default SettingsPage;
