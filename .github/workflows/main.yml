@@ -26,6 +26,9 @@ jobs:
         with:
           node-version: 20
 
+      - name: Enable Yarn
+        run: corepack enable
+
       - name: Install dependencies
         working-directory: frontend
         run: |
