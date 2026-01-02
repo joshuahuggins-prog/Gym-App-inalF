@@ -40,27 +40,20 @@ const SettingsPage = () => {
     });
   };
 
-  const handleResetApp = () => {
-    const ok = window.confirm(
-      "Reset app?\n\nThis will permanently delete ALL data on this device.\nThis cannot be undone."
-    );
-    if (!ok) return;
+const handleResetApp = async () => {
+  const ok = window.confirm(
+    "Reset app?\n\nThis will permanently delete ALL data on this device.\nThis cannot be undone."
+  );
+  if (!ok) return;
 
-    try {
-      const done = resetAllLocalData();
-
-      if (done === false) {
-        toast.error("Reset failed. See console for details.");
-        return;
-      }
-
-      toast.success("All local data deleted. Reloading…");
-      setTimeout(() => window.location.reload(), 600);
-    } catch (e) {
-      console.error(e);
-      toast.error("Reset failed. See console for details.");
-    }
-  };
+  const done = await resetAllLocalData();
+  if (done) {
+    toast.success("All local data deleted. Reloading…");
+    setTimeout(() => window.location.reload(), 600);
+  } else {
+    toast.error("Reset failed. See console for details.");
+  }
+};
 
   if (!progressionSettings) return null;
 
