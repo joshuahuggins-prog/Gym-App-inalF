@@ -25,6 +25,8 @@ import {
   setWorkoutPatternIndex, // make sure this exists in storage.js
 } from "../utils/storage";
 
+const storageVersion = localStorage.getItem("gym_storage_version") || "unknown";
+
 const SettingsPage = () => {
   const { weightUnit, toggleWeightUnit } = useSettings();
 
