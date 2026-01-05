@@ -366,5 +366,7 @@ const SettingsPage = () => {
     </div>
   );
 };
-
+<div className="mt-6 text-center text-xs text-muted-foreground">
+  Data version: {storageVersion}
+</div>
 export default SettingsPage;
