@@ -1,5 +1,32 @@
 // LocalStorage utility functions for workout data
 
+const STORAGE_VERSION = 1;
+const STORAGE_VERSION_KEY = "gym_storage_version";
+
+export const initStorage = () => {
+  try {
+    const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY);
+
+    // First install
+    if (!storedVersion) {
+      localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION.toString());
+      return;
+    }
+
+    const version = parseInt(storedVersion, 10);
+
+    // Example future migrations
+    if (version < 1) {
+      // nothing yet
+    }
+
+    // Save current version
+    localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION.toString());
+  } catch (e) {
+    console.error("Storage init failed", e);
+  }
+};
+
 const STORAGE_KEYS = {
   WORKOUTS: 'gym_workouts',
   SETTINGS: 'gym_settings',
