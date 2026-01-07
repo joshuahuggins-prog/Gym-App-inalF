@@ -77,13 +77,13 @@ export const WORKOUT_B = {
       notes: 'Reverse Pyramid Training - Underhand grip'
     },
     {
-      id: 'seated_cable_rows',
-      name: 'Seated Cable Rows',
-      sets: 3,
+      id: 'dumbbell_romanian_deadlifts',
+      name: 'Dumbbell Romanian Deadlifts',
+      sets: 4,
       repScheme: 'RPT',
-      goalReps: [8, 10, 12],
+      goalReps: [12, 12, 12, 12],
       restTime: 150,
-      notes: 'Pull to lower chest, squeeze shoulder blades'
+      notes: 'after four sets for 12 reps, increase by 5 lb pounds per dumbbell on each set. After reaching 60 increase be 10 lb.'
     },
     {
       id: 'bulgarian_split_squats',
