@@ -233,7 +233,7 @@ const getDefaultVideoLinks = () => ({
   'overhead_press': 'https://www.youtube.com/watch?v=2yjwXTZQDDI',
   'lateral_raises': 'https://www.youtube.com/watch?v=3VcKaXpzqRo',
   'triceps_pushdowns': 'https://www.youtube.com/watch?v=-xa-6cQaZKY',
-  'weighted_chinups': 'https://www.youtube.com/watch?v=tB3X4TjTIuc',
+  'weighted_chinups': 'https://www.youtube.com/watch?v=bZ6Ysk9jf6E',
   'seated_cable_rows': 'https://www.youtube.com/watch?v=xQNrFHEMhI4',
   'bulgarian_split_squats': 'https://www.youtube.com/watch?v=2C-uNgKwPLE',
   'incline_hammer_curls': 'https://www.youtube.com/watch?v=zC3nLlEvin4',
