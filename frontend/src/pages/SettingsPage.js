@@ -22,21 +22,23 @@ import {
   setWorkoutPattern,
   parseWorkoutPattern,
   getUsableProgrammes,
-  setWorkoutPatternIndex, // make sure this exists in storage.js
+  setWorkoutPatternIndex,
 } from "../utils/storage";
-
-const storageVersion = localStorage.getItem("gym_storage_version") || "unknown";
 
 const SettingsPage = () => {
   const { weightUnit, toggleWeightUnit } = useSettings();
 
   const [progressionSettings, setProgressionSettings] = useState(null);
   const [exercises, setExercises] = useState([]);
-
   const [workoutPattern, setWorkoutPatternState] = useState("");
+
+  // Read version (safe to do inside component)
+  const storageVersion =
+    localStorage.getItem("gym_storage_version") || "unknown";
 
   useEffect(() => {
     loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadSettings = () => {
@@ -80,6 +82,7 @@ const SettingsPage = () => {
     }
 
     setWorkoutPattern(workoutPattern);
+
     // restart the sequence from the beginning
     if (typeof setWorkoutPatternIndex === "function") {
       setWorkoutPatternIndex(0);
@@ -169,7 +172,8 @@ const SettingsPage = () => {
           />
 
           <div className="text-xs text-muted-foreground mt-2">
-            Usable programmes: <span className="font-semibold">{usableProgrammeText}</span>
+            Usable programmes:{" "}
+            <span className="font-semibold">{usableProgrammeText}</span>
           </div>
 
           <Button size="lg" className="w-full mt-4" onClick={handleSavePattern}>
@@ -202,7 +206,8 @@ const SettingsPage = () => {
                 min="0"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                When you hit your goal reps on the first set, this amount will be suggested for next workout
+                When you hit your goal reps on the first set, this amount will
+                be suggested for next workout
               </p>
             </div>
 
@@ -225,7 +230,9 @@ const SettingsPage = () => {
             </div>
 
             <div className="pt-4 border-t border-border">
-              <h3 className="font-semibold text-foreground mb-3">RPT Percentages</h3>
+              <h3 className="font-semibold text-foreground mb-3">
+                RPT Percentages
+              </h3>
 
               <div className="space-y-3">
                 <div>
@@ -245,7 +252,8 @@ const SettingsPage = () => {
                     max="100"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Current: {progressionSettings.rptSet2Percentage}% (default: 90%)
+                    Current: {progressionSettings.rptSet2Percentage}% (default:
+                    90%)
                   </p>
                 </div>
 
@@ -266,7 +274,8 @@ const SettingsPage = () => {
                     max="100"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Current: {progressionSettings.rptSet3Percentage}% (default: 80%)
+                    Current: {progressionSettings.rptSet3Percentage}% (default:
+                    80%)
                   </p>
                 </div>
               </div>
@@ -280,12 +289,14 @@ const SettingsPage = () => {
             Exercise-Specific Progression
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Override the default progression for specific exercises. Leave at 0 to use global default.
+            Override the default progression for specific exercises. Leave at 0
+            to use global default.
           </p>
 
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {exercises.map((exercise) => {
-              const currentValue = progressionSettings.exerciseSpecific[exercise.id] || 0;
+              const currentValue =
+                progressionSettings.exerciseSpecific[exercise.id] || 0;
               const defaultValue =
                 weightUnit === "lbs"
                   ? progressionSettings.globalIncrementLbs
@@ -297,7 +308,9 @@ const SettingsPage = () => {
                   className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border"
                 >
                   <div className="flex-1">
-                    <div className="font-semibold text-foreground">{exercise.name}</div>
+                    <div className="font-semibold text-foreground">
+                      {exercise.name}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       Using:{" "}
                       {currentValue > 0
@@ -310,7 +323,10 @@ const SettingsPage = () => {
                       type="number"
                       value={currentValue}
                       onChange={(e) =>
-                        handleUpdateExerciseProgression(exercise.id, e.target.value)
+                        handleUpdateExerciseProgression(
+                          exercise.id,
+                          e.target.value
+                        )
                       }
                       placeholder={defaultValue.toString()}
                       step="0.5"
@@ -329,9 +345,17 @@ const SettingsPage = () => {
           <div className="text-sm text-foreground">
             <div className="font-semibold mb-2">💡 How Progression Works:</div>
             <ul className="space-y-1 text-muted-foreground">
-              <li>• When you complete your goal reps on the <strong>first set</strong>, the app suggests adding weight</li>
-              <li>• RPT exercises auto-calculate Set 2 and Set 3 weights based on the percentages you set</li>
-              <li>• You can customize progression per exercise for precise control</li>
+              <li>
+                • When you complete your goal reps on the{" "}
+                <strong>first set</strong>, the app suggests adding weight
+              </li>
+              <li>
+                • RPT exercises auto-calculate Set 2 and Set 3 weights based on
+                the percentages you set
+              </li>
+              <li>
+                • You can customize progression per exercise for precise control
+              </li>
               <li>• Settings are applied when you start your next workout</li>
             </ul>
           </div>
@@ -350,7 +374,8 @@ const SettingsPage = () => {
             Danger zone
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            This deletes all workouts, stats, programmes and settings stored on this device. It cannot be undone.
+            This deletes all workouts, stats, programmes and settings stored on
+            this device. It cannot be undone.
           </p>
 
           <Button
@@ -362,37 +387,38 @@ const SettingsPage = () => {
             Reset app
           </Button>
         </div>
+
+        {/* Footer meta */}
+        <div className="mt-2 text-center text-[11px] text-muted-foreground opacity-70">
+          Data version: {storageVersion}
+        </div>
+
+        {/* About */}
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h2 className="text-xl font-bold text-foreground mb-2">About</h2>
+
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <div className="font-semibold text-foreground">
+              Gym Strength Programme
+            </div>
+
+            <div>
+              App version: <span className="text-foreground">1.0.0</span>
+            </div>
+
+            <div>
+              Data version:{" "}
+              <span className="text-foreground">{storageVersion}</span>
+            </div>
+
+            <div className="pt-2 text-xs opacity-80">
+              Offline-first training app built for progressive overload.
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-<div className="mt-6 text-center text-[11px] text-muted-foreground opacity-70">
-  Data version {storageVersion}
-</div>
-<div className="bg-card border border-border rounded-xl p-6">
-  <h2 className="text-xl font-bold text-foreground mb-2">
-    About
-  </h2>
 
-  <div className="space-y-1 text-sm text-muted-foreground">
-    <div className="font-semibold text-foreground">
-      Gym Strength Programme
-    </div>
-
-    <div>
-      App version: <span className="text-foreground">1.0.0</span>
-    </div>
-
-    <div>
-      Data version:{" "}
-      <span className="text-foreground">
-        {localStorage.getItem("gym_storage_version") || "unknown"}
-      </span>
-    </div>
-
-    <div className="pt-2 text-xs opacity-80">
-      Offline-first training app built for progressive overload.
-    </div>
-  </div>
-</div>
 export default SettingsPage;
