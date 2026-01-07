@@ -77,8 +77,8 @@ export const WORKOUT_B = {
       notes: 'Reverse Pyramid Training - Underhand grip'
     },
     {
-      id: 'dumbbell_romanian_deadlifts',
-      name: 'Dumbbell Romanian Deadlifts',
+      id: 'db_romanian_deadlifts',
+      name: 'DB Romanian Deadlifts',
       sets: 4,
       repScheme: 'RPT',
       goalReps: [12, 12, 12, 12],
@@ -124,7 +124,7 @@ export const EXERCISE_ALTERNATIVES = {
   lateral_raises: ['Cable Lateral Raises', 'Machine Lateral Raises', 'Dumbbell Lateral Raises'],
   triceps_pushdowns: ['Overhead Tricep Extension', 'Close-Grip Bench', 'Dips'],
   weighted_chinups: ['Lat Pulldown', 'Assisted Chinups', 'Inverted Rows'],
-  seated_cable_rows: ['Barbell Rows', 'T-Bar Rows', 'Chest-Supported Rows'],
+  db_romanian_deadlifts: ['Reverse Lunges', 'Weighted Step-Ups','Single-Leg Leg Press'],
   bulgarian_split_squats: ['Walking Lunges', 'Reverse Lunges', 'Leg Press'],
   incline_hammer_curls: ['Standing Hammer Curls', 'Rope Hammer Curls', 'Cross-Body Curls'],
   face_pulls: ['Reverse Fly', 'Band Pull-Aparts', 'Rear Delt Fly Machine']
