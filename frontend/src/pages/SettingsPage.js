@@ -369,4 +369,30 @@ const SettingsPage = () => {
 <div className="mt-6 text-center text-[11px] text-muted-foreground opacity-70">
   Data version {storageVersion}
 </div>
+<div className="bg-card border border-border rounded-xl p-6">
+  <h2 className="text-xl font-bold text-foreground mb-2">
+    About
+  </h2>
+
+  <div className="space-y-1 text-sm text-muted-foreground">
+    <div className="font-semibold text-foreground">
+      Gym Strength Programme
+    </div>
+
+    <div>
+      App version: <span className="text-foreground">1.0.0</span>
+    </div>
+
+    <div>
+      Data version:{" "}
+      <span className="text-foreground">
+        {localStorage.getItem("gym_storage_version") || "unknown"}
+      </span>
+    </div>
+
+    <div className="pt-2 text-xs opacity-80">
+      Offline-first training app built for progressive overload.
+    </div>
+  </div>
+</div>
 export default SettingsPage;
