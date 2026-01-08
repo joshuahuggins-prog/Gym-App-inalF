@@ -7,6 +7,13 @@ import {
   ListOrdered,
 } from "lucide-react";
 
+import { resetWithBackup } from "../utils/storage";
+
+const onReset = async () => {
+  const res = await resetWithBackup({ merge: false });
+  if (!res.success) alert(res.error);
+};
+
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { useSettings } from "../contexts/SettingsContext";
@@ -31,13 +38,6 @@ const SettingsPage = () => {
   const [progressionSettings, setProgressionSettings] = useState(null);
   const [exercises, setExercises] = useState([]);
   const [workoutPattern, setWorkoutPatternState] = useState("");
-
-import { resetWithBackup } from "../utils/storage";
-
-const onReset = async () => {
-  const res = await resetWithBackup({ merge: false });
-  if (!res.success) alert(res.error);
-};
 
   // Read version (safe to do inside component)
   const storageVersion =
