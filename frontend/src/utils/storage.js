@@ -553,4 +553,29 @@ export const importAllDataFromJSON = (jsonText, options = { merge: false }) => {
     return { success: false, error: `Import failed: ${e.message}` };
   }
 };
+const normalize = (s) => (s || "").toString().trim().toLowerCase();
+
+const autoHideUnusedCatalogueExercises = (data) => {
+  if (!data || !Array.isArray(data.exercises)) return data;
+
+  // Build set of active IDs from programmes
+  const activeIds = new Set();
+  if (Array.isArray(data.programmes)) {
+    data.programmes.forEach((prog) => {
+      (prog.exercises || []).forEach((ex) => {
+        if (ex?.id) activeIds.add(normalize(ex.id));
+      });
+    });
+  }
+
+  data.exercises = data.exercises.map((ex) => {
+    const id = normalize(ex.id);
+    if (!id) return ex;
+
+    const shouldStayVisible = activeIds.has(id);
+    return { ...ex, hidden: !shouldStayVisible };
+  });
+
+  return data;
+};
 export default STORAGE_KEYS;
