@@ -32,6 +32,13 @@ const SettingsPage = () => {
   const [exercises, setExercises] = useState([]);
   const [workoutPattern, setWorkoutPatternState] = useState("");
 
+import { resetWithBackup } from "../utils/storage";
+
+const onReset = async () => {
+  const res = await resetWithBackup({ merge: false });
+  if (!res.success) alert(res.error);
+};
+
   // Read version (safe to do inside component)
   const storageVersion =
     localStorage.getItem("gym_storage_version") || "unknown";
@@ -418,11 +425,5 @@ const SettingsPage = () => {
       </div>
     </div>
   );
-};
-import { resetWithBackup } from "../utils/storage";
-
-const onReset = async () => {
-  const res = await resetWithBackup({ merge: false });
-  if (!res.success) alert(res.error);
 };
 export default SettingsPage;
