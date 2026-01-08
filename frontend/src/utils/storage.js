@@ -315,7 +315,7 @@ export const getExercises = () => {
 };
 
 export const saveExercise = (exercise) => {
-  const exercises = getExercises();
+  const exercises = getExercises().filter(e => !e.hidden);
   const existing = exercises.find(e => e.id === exercise.id);
   
   if (existing) {
