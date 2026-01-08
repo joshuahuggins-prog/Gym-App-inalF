@@ -1,6 +1,6 @@
 // LocalStorage utility functions for workout data
 
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 3;
 const STORAGE_VERSION_KEY = "gym_storage_version";
 
 export const initStorage = () => {
@@ -8,8 +8,8 @@ export const initStorage = () => {
     const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY);
     const version = storedVersion ? parseInt(storedVersion, 10) : 0;
 
-    // ===== Migration to v2 =====
-    if (version < 2) {
+    // ===== Migration to v3 =====
+    if (version < 3) {
       const programmes = JSON.parse(
         localStorage.getItem(STORAGE_KEYS.PROGRAMMES) || "null"
       );
@@ -36,16 +36,34 @@ const replaceExerciseInProgrammes = (programmes, fromId, toExercise) => {
 };
 
       if (Array.isArray(programmes) && Array.isArray(exercises)) {
-        const migrated = autoHideUnusedCatalogueExercises({
-          programmes,
-          exercises
-        });
 
-        localStorage.setItem(
-          STORAGE_KEYS.EXERCISES,
-          JSON.stringify(migrated.exercises)
-        );
-      }
+  // 1️⃣ Replace seated cable rows → DB Bulgarian Deadlifts in programmes
+  const updatedProgrammes = replaceExerciseInProgrammes(
+    programmes,
+    "seated_cable_rows",
+    {
+      id: "db_bulgarian_deadlifts",
+      name: "DB Bulgarian Deadlifts",
+      notes: "Hip hinge, dumbbells, slight knee bend"
+    }
+  );
+
+  localStorage.setItem(
+    STORAGE_KEYS.PROGRAMMES,
+    JSON.stringify(updatedProgrammes)
+  );
+
+  // 2️⃣ Auto-hide unused exercises AFTER replacement
+  const migrated = autoHideUnusedCatalogueExercises({
+    programmes: updatedProgrammes,
+    exercises
+  });
+
+  localStorage.setItem(
+    STORAGE_KEYS.EXERCISES,
+    JSON.stringify(migrated.exercises)
+  );
+}
     }
 
     // Save current version
