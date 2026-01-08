@@ -37,7 +37,9 @@ const STORAGE_KEYS = {
   EXERCISES: 'gym_exercises',
   PROGRESSION_SETTINGS: 'gym_progression_settings',
   WORKOUT_PATTERN: "gym_workout_pattern",
-  WORKOUT_PATTERN_INDEX: "gym_workout_pattern_index"
+  WORKOUT_PATTERN_INDEX: "gym_workout_pattern_index",
+  SCHEMA_VERSION: 
+'gym_schema_version'
 };
 
 // Get data from localStorage
