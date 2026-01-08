@@ -1,6 +1,6 @@
 // LocalStorage utility functions for workout data
 
-const STORAGE_VERSION = 3;
+const STORAGE_VERSION = 3.1;
 const STORAGE_VERSION_KEY = "gym_storage_version";
 
 export const initStorage = () => {
@@ -8,32 +8,45 @@ export const initStorage = () => {
     const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY);
     const version = storedVersion ? parseInt(storedVersion, 10) : 0;
 
-    // ===== Migration to v3 =====
-    if (version < 3) {
-      const programmes = JSON.parse(
-        localStorage.getItem(STORAGE_KEYS.PROGRAMMES) || "null"
-      );
-      const exercises = JSON.parse(
-        localStorage.getItem(STORAGE_KEYS.EXERCISES) || "null"
-      );
+    // ===== Migration to v3.1 =====
+    if (version < 3.1) {
+  const programmes = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROGRAMMES) || "null");
+  const exercises = JSON.parse(localStorage.getItem(STORAGE_KEYS.EXERCISES) || "null");
 
-const replaceExerciseInProgrammes = (programmes, fromId, toExercise) => {
-  return programmes.map((p) => {
-    if (!Array.isArray(p.exercises)) return p;
+  if (Array.isArray(programmes) && Array.isArray(exercises)) {
+    const deadliftId = "db_bulgarian_deadlifts";
 
-    return {
-      ...p,
-      exercises: p.exercises.map((ex) => {
-        if (ex.id !== fromId) return ex;
+    // ✅ Add deadlifts to catalogue if missing
+    const hasDeadlifts = exercises.some(e => e?.id === deadliftId);
+    let updatedExercises = exercises;
 
-        return {
-          ...ex,
-          ...toExercise
-        };
-      })
-    };
-  });
-};
+    if (!hasDeadlifts) {
+      updatedExercises = [
+        ...exercises,
+        {
+          id: deadliftId,
+          name: "DB Bulgarian Deadlifts",
+          sets: 3,
+          repScheme: "RPT",
+          goalReps: [6, 8, 10],
+          restTime: 120,
+          notes: "Hip hinge, dumbbells, slight knee bend",
+          assignedTo: ["B"],
+          hidden: false
+        }
+      ];
+    }
+
+    // (Optional) ensure video link exists
+    const videoLinks = JSON.parse(localStorage.getItem(STORAGE_KEYS.VIDEO_LINKS) || "null") || {};
+    if (!videoLinks[deadliftId]) {
+      videoLinks[deadliftId] = "https://www.youtube.com/watch?v=hQgFixeXdZo";
+      localStorage.setItem(STORAGE_KEYS.VIDEO_LINKS, JSON.stringify(videoLinks));
+    }
+
+    localStorage.setItem(STORAGE_KEYS.EXERCISES, JSON.stringify(updatedExercises));
+  }
+}
 
       if (Array.isArray(programmes) && Array.isArray(exercises)) {
 
