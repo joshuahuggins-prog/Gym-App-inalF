@@ -17,6 +17,24 @@ export const initStorage = () => {
         localStorage.getItem(STORAGE_KEYS.EXERCISES) || "null"
       );
 
+const replaceExerciseInProgrammes = (programmes, fromId, toExercise) => {
+  return programmes.map((p) => {
+    if (!Array.isArray(p.exercises)) return p;
+
+    return {
+      ...p,
+      exercises: p.exercises.map((ex) => {
+        if (ex.id !== fromId) return ex;
+
+        return {
+          ...ex,
+          ...toExercise
+        };
+      })
+    };
+  });
+};
+
       if (Array.isArray(programmes) && Array.isArray(exercises)) {
         const migrated = autoHideUnusedCatalogueExercises({
           programmes,
