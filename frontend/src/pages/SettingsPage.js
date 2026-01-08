@@ -419,5 +419,10 @@ const SettingsPage = () => {
     </div>
   );
 };
+import { resetWithBackup } from "../utils/storage";
 
+const onReset = async () => {
+  const res = await resetWithBackup({ merge: false });
+  if (!res.success) alert(res.error);
+};
 export default SettingsPage;
