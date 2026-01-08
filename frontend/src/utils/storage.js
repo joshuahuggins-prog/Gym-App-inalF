@@ -1,6 +1,6 @@
 // LocalStorage utility functions for workout data
 
-const STORAGE_VERSION = 3.1;
+const STORAGE_VERSION = 4;
 const STORAGE_VERSION_KEY = "gym_storage_version";
 
 export const initStorage = () => {
@@ -8,76 +8,67 @@ export const initStorage = () => {
     const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY);
     const version = storedVersion ? parseInt(storedVersion, 10) : 0;
 
-    // ===== Migration to v3.1 =====
-    if (version < 3.1) {
-  const programmes = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROGRAMMES) || "null");
-  const exercises = JSON.parse(localStorage.getItem(STORAGE_KEYS.EXERCISES) || "null");
-
-  if (Array.isArray(programmes) && Array.isArray(exercises)) {
-    const deadliftId = "db_bulgarian_deadlifts";
-
-    // ✅ Add deadlifts to catalogue if missing
-    const hasDeadlifts = exercises.some(e => e?.id === deadliftId);
-    let updatedExercises = exercises;
-
-    if (!hasDeadlifts) {
-      updatedExercises = [
-        ...exercises,
-        {
-          id: deadliftId,
-          name: "DB Bulgarian Deadlifts",
-          sets: 3,
-          repScheme: "RPT",
-          goalReps: [6, 8, 10],
-          restTime: 120,
-          notes: "Hip hinge, dumbbells, slight knee bend",
-          assignedTo: ["B"],
-          hidden: false
-        }
-      ];
-    }
-
-    // (Optional) ensure video link exists
-    const videoLinks = JSON.parse(localStorage.getItem(STORAGE_KEYS.VIDEO_LINKS) || "null") || {};
-    if (!videoLinks[deadliftId]) {
-      videoLinks[deadliftId] = "https://www.youtube.com/watch?v=hQgFixeXdZo";
-      localStorage.setItem(STORAGE_KEYS.VIDEO_LINKS, JSON.stringify(videoLinks));
-    }
-
-    localStorage.setItem(STORAGE_KEYS.EXERCISES, JSON.stringify(updatedExercises));
-  }
-}
+    // ===== Migration to v4 =====
+    if (version < 4) {
+      const programmes = JSON.parse(
+        localStorage.getItem(STORAGE_KEYS.PROGRAMMES) || "null"
+      );
+      const exercises = JSON.parse(
+        localStorage.getItem(STORAGE_KEYS.EXERCISES) || "null"
+      );
+      const videoLinks =
+        JSON.parse(localStorage.getItem(STORAGE_KEYS.VIDEO_LINKS) || "null") || {};
 
       if (Array.isArray(programmes) && Array.isArray(exercises)) {
+        const deadliftId = "db_bulgarian_deadlifts";
 
-  // 1️⃣ Replace seated cable rows → DB Bulgarian Deadlifts in programmes
-  const updatedProgrammes = replaceExerciseInProgrammes(
-    programmes,
-    "seated_cable_rows",
-    {
-      id: "db_bulgarian_deadlifts",
-      name: "DB Bulgarian Deadlifts",
-      notes: "Hip hinge, dumbbells, slight knee bend"
-    }
-  );
+        // 1) Replace seated cable rows -> deadlifts in programmes (drives Home)
+        const updatedProgrammes = replaceExerciseInProgrammes(
+          programmes,
+          "seated_cable_rows",
+          {
+            id: deadliftId,
+            name: "DB Bulgarian Deadlifts",
+            notes: "Hip hinge, dumbbells, slight knee bend"
+          }
+        );
 
-  localStorage.setItem(
-    STORAGE_KEYS.PROGRAMMES,
-    JSON.stringify(updatedProgrammes)
-  );
+        localStorage.setItem(
+          STORAGE_KEYS.PROGRAMMES,
+          JSON.stringify(updatedProgrammes)
+        );
 
-  // 2️⃣ Auto-hide unused exercises AFTER replacement
-  const migrated = autoHideUnusedCatalogueExercises({
-    programmes: updatedProgrammes,
-    exercises
-  });
+        // 2) Ensure deadlifts exists in EXERCISES catalogue (drives Exercises page)
+        const hasDeadlifts = exercises.some((e) => e?.id === deadliftId);
+        let updatedExercises = exercises;
 
-  localStorage.setItem(
-    STORAGE_KEYS.EXERCISES,
-    JSON.stringify(migrated.exercises)
-  );
-}
-    }
+        if (!hasDeadlifts) {
+          updatedExercises = [
+            ...exercises,
+            {
+              id: deadliftId,
+              name: "DB Bulgarian Deadlifts",
+              sets: 3,
+              repScheme: "RPT",
+              goalReps: [6, 8, 10],
+              restTime: 120,
+              notes: "Hip hinge, dumbbells, slight knee bend",
+              assignedTo: ["B"],
+              hidden: false
+            }
+          ];
+        }
+
+        // 3) Auto-hide unused catalogue exercises AFTER programmes update
+        const migrated = autoHideUnusedCatalogueExercises({
+          programmes: updatedProgrammes,
+          exercises: updatedExercises
+        });
+
+        localStorage.setItem(
+          STORAGE_KEYS.EXERCISES,
+          JSON.stringify(migrated.exercises)
+        );
 
     // Save current version
     localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION.toString());
