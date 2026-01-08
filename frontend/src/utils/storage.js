@@ -6,18 +6,28 @@ const STORAGE_VERSION_KEY = "gym_storage_version";
 export const initStorage = () => {
   try {
     const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY);
+    const version = storedVersion ? parseInt(storedVersion, 10) : 0;
 
-    // First install
-    if (!storedVersion) {
-      localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION.toString());
-      return;
-    }
+    // ===== Migration to v2 =====
+    if (version < 2) {
+      const programmes = JSON.parse(
+        localStorage.getItem(STORAGE_KEYS.PROGRAMMES) || "null"
+      );
+      const exercises = JSON.parse(
+        localStorage.getItem(STORAGE_KEYS.EXERCISES) || "null"
+      );
 
-    const version = parseInt(storedVersion, 10);
+      if (Array.isArray(programmes) && Array.isArray(exercises)) {
+        const migrated = autoHideUnusedCatalogueExercises({
+          programmes,
+          exercises
+        });
 
-    // Example future migrations
-    if (version < 1) {
-      // nothing yet
+        localStorage.setItem(
+          STORAGE_KEYS.EXERCISES,
+          JSON.stringify(migrated.exercises)
+        );
+      }
     }
 
     // Save current version
