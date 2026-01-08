@@ -1,6 +1,6 @@
 // LocalStorage utility functions for workout data
 
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
 const STORAGE_VERSION_KEY = "gym_storage_version";
 
 export const initStorage = () => {
