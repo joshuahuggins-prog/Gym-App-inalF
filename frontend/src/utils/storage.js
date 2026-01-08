@@ -642,4 +642,27 @@ const autoHideUnusedCatalogueExercises = (data) => {
 
   return data;
 };
+
+export const resetWithBackup = async (options = { merge: false }) => {
+  try {
+    // 1) Backup current data
+    const backupJson = exportAllDataToJSON();
+    if (!backupJson) return { success: false, error: "Backup failed." };
+
+    // 2) Reset all local data (localStorage + caches)
+    const resetOk = await resetAllLocalData();
+    if (!resetOk) return { success: false, error: "Reset failed." };
+
+    // 3) Restore from backup immediately
+    const result = importAllDataFromJSON(backupJson, options);
+    if (!result?.success) return result;
+
+    // 4) Optional: force reload so UI uses fresh state
+    window.location.reload();
+
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+};
 export default STORAGE_KEYS;
