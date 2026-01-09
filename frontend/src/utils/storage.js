@@ -9,10 +9,22 @@ export const initStorage = () => {
     const version = storedVersion ? parseInt(storedVersion, 10) : 0;
 
     // ===== Migration to v6 =====
+    // - Fix earlier bug where saving an exercise accidentally dropped hidden/legacy exercises.
+    // - Rebuild/merge the exercise catalogue so legacy items (e.g. seated_cable_rows)
+    //   and defaults (e.g. db_romanian_deadlifts) reappear.
     if (version < 6) {
-      const programmes = JSON.parse(
-        localStorage.getItem(STORAGE_KEYS.PROGRAMMES) || "null"
-      );
+      const programmes = getStorageData(STORAGE_KEYS.PROGRAMMES) || [];
+      const exercises = getStorageData(STORAGE_KEYS.EXERCISES) || [];
+
+      const merged = rebuildExerciseCatalogue(programmes, exercises);
+      setStorageData(STORAGE_KEYS.EXERCISES, merged);
+    }
+
+    localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION.toString());
+  } catch (e) {
+    console.error("Storage init failed", e);
+  }
+};
       const exercises = JSON.parse(
         localStorage.getItem(STORAGE_KEYS.EXERCISES) || "null"
       );
