@@ -20,7 +20,7 @@ import {
   parseWorkoutPattern,
   getUsableProgrammes,
   setWorkoutPatternIndex,
-  resetWithBackup, // ✅ nuclear option
+  resetWithBackup, // ✅ Force Update
 } from "../utils/storage";
 
 const SettingsPage = () => {
@@ -142,7 +142,7 @@ const SettingsPage = () => {
         <Button onClick={handleSavePattern}>Save pattern</Button>
       </div>
 
-      {/* ===== Nuclear Option ===== */}
+      {/* ===== Force Update ===== */}
       <div className="rounded-xl border border-red-500/40 p-4 space-y-3">
         <div className="flex items-center gap-2 text-red-500">
           <AlertTriangle className="h-5 w-5" />
