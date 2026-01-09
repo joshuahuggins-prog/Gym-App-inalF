@@ -1,6 +1,6 @@
 // LocalStorage utility functions for workout data
 
-const STORAGE_VERSION = 4; // use integers for migrations
+const STORAGE_VERSION = 6; // use integers for migrations
 const STORAGE_VERSION_KEY = "gym_storage_version";
 
 export const initStorage = () => {
@@ -8,14 +8,87 @@ export const initStorage = () => {
     const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY);
     const version = storedVersion ? parseInt(storedVersion, 10) : 0;
 
-    // ===== Migration to v5 =====
-    if (version < 5) {
+    // ===== Migration to v6 =====
+    if (version < 6) {
       const programmes = JSON.parse(
         localStorage.getItem(STORAGE_KEYS.PROGRAMMES) || "null"
       );
       const exercises = JSON.parse(
         localStorage.getItem(STORAGE_KEYS.EXERCISES) || "null"
       );
+
+const STORAGE_VERSION = 6; // use integers for migrations
+const STORAGE_VERSION_KEY = "gym_storage_version";
+
+// ---- Exercise catalogue helpers ----
+const normalizeId = (s) => (s || "").toString().trim();
+
+// Legacy/archived exercises you may want to keep in the library even if not in programmes
+const LEGACY_EXERCISE_CATALOGUE = [
+  {
+    id: "seated_cable_rows",
+    name: "Seated Cable Rows",
+    sets: 3,
+    repScheme: "RPT",
+    goalReps: [8, 10, 12],
+    restTime: 150,
+    notes: "Pull to lower chest, squeeze shoulder blades",
+  },
+];
+
+function getDefaultExercisesFromWorkoutData() {
+  try {
+    const { WORKOUT_A, WORKOUT_B } = require("../data/workoutData");
+    const all = [...(WORKOUT_A?.exercises || []), ...(WORKOUT_B?.exercises || [])];
+    return all;
+  } catch (e) {
+    return [];
+  }
+}
+
+function rebuildExerciseCatalogue(programmes, existingExercises) {
+  const existing = Array.isArray(existingExercises) ? existingExercises : [];
+  const defaults = getDefaultExercisesFromWorkoutData();
+
+  // Merge: existing + defaults + legacy (existing wins if same id)
+  const byId = new Map();
+
+  const add = (ex) => {
+    if (!ex || !ex.id) return;
+    const id = normalizeId(ex.id);
+    if (!id) return;
+    const prev = byId.get(id);
+    byId.set(id, { ...(prev || {}), ...ex, id });
+  };
+
+  existing.forEach(add);
+  defaults.forEach(add);
+  LEGACY_EXERCISE_CATALOGUE.forEach(add);
+
+  // Recompute assignedTo based on programmes
+  const assignedMap = new Map();
+  const progs = Array.isArray(programmes) ? programmes : [];
+  progs.forEach((p) => {
+    const type = p?.type;
+    (p?.exercises || []).forEach((ex) => {
+      const id = normalizeId(ex?.id);
+      if (!id || !type) return;
+      if (!assignedMap.has(id)) assignedMap.set(id, new Set());
+      assignedMap.get(id).add(type);
+    });
+  });
+
+  return Array.from(byId.values()).map((ex) => {
+    const id = normalizeId(ex.id);
+    const assigned = assignedMap.has(id)
+      ? Array.from(assignedMap.get(id))
+      : (ex.assignedTo || []);
+    return {
+      ...ex,
+      assignedTo: assigned,
+    };
+  });
+}
 
       // Only run if both exist
       if (Array.isArray(programmes) && Array.isArray(exercises)) {
