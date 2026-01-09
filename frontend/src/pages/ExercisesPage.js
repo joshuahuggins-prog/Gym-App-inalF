@@ -29,7 +29,10 @@ import {
 } from "../utils/storage";
 import { toast } from "sonner";
 
-const MAX_SETS = 8; // ✅ limit sets (dropdown)
+const MAX_SETS = 8; // ✅ limit number of sets (and therefore rep boxes)
+
+const clampInt = (n, min, max) => Math.max(min, Math.min(max, n));
+
 const ExercisesPage = () => {
   const [exercises, setExercises] = useState([]);
   const [programmes, setProgrammes] = useState([]);
@@ -38,8 +41,8 @@ const ExercisesPage = () => {
   const [editingExercise, setEditingExercise] = useState(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
-  // draft string so user can clear/type without input getting "stuck"
-  const [repTargetCountDraft, setRepTargetCountDraft] = useState("");
+  // draft strings prevent "stuck" inputs when clearing/typing
+  const [setsDraft, setSetsDraft] = useState("");
 
   useEffect(() => {
     loadData();
@@ -51,11 +54,12 @@ const ExercisesPage = () => {
   };
 
   const handleCreateExercise = () => {
-    const goalReps = [8, 10, 12];
+    const sets = 3;
+    const goalReps = [8, 10, 12]; // one per set
     setEditingExercise({
       id: `exercise_${Date.now()}`,
       name: "",
-      sets: 3,
+      sets,
       repScheme: "RPT",
       goalReps,
       restTime: 120,
@@ -63,16 +67,29 @@ const ExercisesPage = () => {
       assignedTo: [],
       videoUrl: "",
     });
-    setRepTargetCountDraft(String(goalReps.length));
+    setSetsDraft(String(sets));
     setShowEditDialog(true);
   };
 
   const handleEditExercise = (exercise) => {
     const videoLinks = getVideoLinks();
     const videoUrl = videoLinks[exercise.id] || "";
-    const goalReps = Array.isArray(exercise.goalReps) && exercise.goalReps.length > 0 ? exercise.goalReps : [8];
-    setEditingExercise({ ...exercise, goalReps, videoUrl });
-    setRepTargetCountDraft(String(goalReps.length));
+
+    const sets = Number.isFinite(Number(exercise.sets)) ? Number(exercise.sets) : 3;
+    const safeSets = clampInt(sets, 1, MAX_SETS);
+
+    let goalReps = Array.isArray(exercise.goalReps) ? [...exercise.goalReps] : [];
+    if (goalReps.length === 0) goalReps = [8];
+
+    // Ensure goalReps length matches sets (pad/trim)
+    if (goalReps.length < safeSets) {
+      goalReps = [...goalReps, ...Array.from({ length: safeSets - goalReps.length }, () => 8)];
+    } else if (goalReps.length > safeSets) {
+      goalReps = goalReps.slice(0, safeSets);
+    }
+
+    setEditingExercise({ ...exercise, sets: safeSets, goalReps, videoUrl });
+    setSetsDraft(String(safeSets));
     setShowEditDialog(true);
   };
 
@@ -84,24 +101,32 @@ const ExercisesPage = () => {
 
     const { videoUrl, ...exerciseData } = editingExercise;
 
-    // ✅ Clean goalReps (open-ended count, open-ended values)
-    const rawGoalReps = Array.isArray(exerciseData.goalReps) ? exerciseData.goalReps : [];
-    const cleanedGoalReps = rawGoalReps
-      .map((x) => (x === "" || x == null ? null : Number(x)))
-      .filter((n) => Number.isFinite(n) && n > 0)
-      .map((n) => Math.max(1, Math.min(200, n))); // clamp reps 1–200 (effectively "open")
-
-    exerciseData.goalReps = cleanedGoalReps.length > 0 ? cleanedGoalReps : [8];
-
-    // ✅ Sets comes from dropdown, but still guard
+    // ✅ Clean sets (1..MAX_SETS)
     const setsNum = Number(exerciseData.sets);
-    exerciseData.sets =
-      Number.isFinite(setsNum) && setsNum >= 1 ? Math.min(MAX_SETS, setsNum) : 3;
+    const sets = Number.isFinite(setsNum) ? clampInt(setsNum, 1, MAX_SETS) : 3;
+    exerciseData.sets = sets;
 
-    // ✅ Rest time guard
+    // ✅ Clean goalReps to match sets (allow blanks while editing)
+    const rawGoalReps = Array.isArray(exerciseData.goalReps) ? exerciseData.goalReps : [];
+    let cleaned = rawGoalReps.map((x) => {
+      if (x === "" || x == null) return 8; // default if left blank
+      const n = Number(x);
+      if (!Number.isFinite(n) || n <= 0) return 8;
+      return clampInt(n, 1, 200); // reps "open", just keep sane
+    });
+
+    // enforce length == sets
+    if (cleaned.length < sets) {
+      cleaned = [...cleaned, ...Array.from({ length: sets - cleaned.length }, () => 8)];
+    } else if (cleaned.length > sets) {
+      cleaned = cleaned.slice(0, sets);
+    }
+
+    exerciseData.goalReps = cleaned.length > 0 ? cleaned : [8];
+
+    // ✅ Clean rest time
     const restNum = Number(exerciseData.restTime);
-    exerciseData.restTime =
-      Number.isFinite(restNum) && restNum > 0 ? restNum : 120;
+    exerciseData.restTime = Number.isFinite(restNum) && restNum > 0 ? restNum : 120;
 
     saveExercise(exerciseData);
 
@@ -112,6 +137,7 @@ const ExercisesPage = () => {
     loadData();
     setShowEditDialog(false);
     setEditingExercise(null);
+    setSetsDraft("");
     toast.success("Exercise saved!");
   };
 
@@ -133,6 +159,24 @@ const ExercisesPage = () => {
         ? assignedTo.filter((p) => p !== programmeType)
         : [...assignedTo, programmeType],
     });
+  };
+
+  const setSetsAndSyncGoalReps = (nextSets) => {
+    const sets = clampInt(nextSets, 1, MAX_SETS);
+
+    const current = Array.isArray(editingExercise.goalReps) ? [...editingExercise.goalReps] : [];
+    let nextGoalReps = current;
+
+    if (nextGoalReps.length < sets) {
+      nextGoalReps = [
+        ...nextGoalReps,
+        ...Array.from({ length: sets - nextGoalReps.length }, () => 8),
+      ];
+    } else if (nextGoalReps.length > sets) {
+      nextGoalReps = nextGoalReps.slice(0, sets);
+    }
+
+    setEditingExercise({ ...editingExercise, sets, goalReps: nextGoalReps });
   };
 
   const filteredExercises = exercises.filter((ex) => {
@@ -293,7 +337,7 @@ const ExercisesPage = () => {
           setShowEditDialog(open);
           if (!open) {
             setEditingExercise(null);
-            setRepTargetCountDraft("");
+            setSetsDraft("");
           }
         }}
       >
@@ -328,29 +372,35 @@ const ExercisesPage = () => {
                   <label className="text-sm font-medium text-foreground block mb-2">
                     Number of Sets (max {MAX_SETS})
                   </label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={MAX_SETS}
+                    value={setsDraft}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setSetsDraft(raw);
 
-                  {/* ✅ Dropdown for sets */}
-                  <Select
-                    value={String(editingExercise.sets ?? 3)}
-                    onValueChange={(value) => {
-                      const n = Number(value);
-                      setEditingExercise({
-                        ...editingExercise,
-                        sets: Number.isFinite(n) ? n : 3,
-                      });
+                      // allow blank while typing (prevents "stuck" input)
+                      if (raw === "") return;
+
+                      const n = Number(raw);
+                      if (!Number.isFinite(n)) return;
+
+                      const clamped = clampInt(n, 1, MAX_SETS);
+                      setSetsAndSyncGoalReps(clamped);
+                      setSetsDraft(String(clamped));
                     }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: MAX_SETS }, (_, i) => i + 1).map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {n}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onBlur={() => {
+                      if (setsDraft === "") {
+                        setSetsDraft(String(editingExercise.sets || 3));
+                      }
+                    }}
+                  />
+
+                  <div className="text-xs text-muted-foreground mt-1">
+                    This controls how many rep boxes appear (one per set).
+                  </div>
                 </div>
 
                 <div>
@@ -376,60 +426,11 @@ const ExercisesPage = () => {
                 </div>
               </div>
 
-              {/* Goal Reps - open-ended values, user controls count */}
+              {/* Rep boxes */}
               <div className="space-y-3">
                 <label className="text-sm font-medium text-foreground block">
-                  Goal Reps
+                  Add goal reps for each set (one box per set)
                 </label>
-
-                <div className="grid grid-cols-2 gap-4 items-end">
-                  <div>
-                    <label className="text-xs text-muted-foreground block mb-1">
-                      Number of rep targets (no max)
-                    </label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={repTargetCountDraft}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        setRepTargetCountDraft(raw);
-
-                        // allow blank while typing
-                        if (raw === "") return;
-
-                        let n = Number(raw);
-                        if (!Number.isFinite(n)) return;
-
-                        // keep it sane without imposing "8"
-                        n = Math.max(1, Math.min(50, n));
-
-                        const current = Array.isArray(editingExercise.goalReps)
-                          ? editingExercise.goalReps
-                          : [];
-
-                        const next = Array.from({ length: n }, (_, i) => {
-                          const v = current[i];
-                          return Number.isFinite(v) && v > 0 ? v : 8;
-                        });
-
-                        setEditingExercise({ ...editingExercise, goalReps: next });
-                        setRepTargetCountDraft(String(n));
-                      }}
-                      onBlur={() => {
-                        if (repTargetCountDraft === "") {
-                          setRepTargetCountDraft(
-                            String((editingExercise.goalReps || []).length || 1)
-                          );
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="text-xs text-muted-foreground">
-                    Tip: often match this to your sets. You can go higher if you want.
-                  </div>
-                </div>
 
                 <div className="grid grid-cols-4 gap-2">
                   {(editingExercise.goalReps || []).map((rep, idx) => (
@@ -576,7 +577,7 @@ const ExercisesPage = () => {
               onClick={() => {
                 setShowEditDialog(false);
                 setEditingExercise(null);
-                setRepTargetCountDraft("");
+                setSetsDraft("");
               }}
             >
               Cancel
