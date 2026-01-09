@@ -388,9 +388,9 @@ function rebuildExerciseCatalogue(programmes, existingExercises) {
     byId.set(id, { ...prev, ...ex, id });
   };
 
-  (existingExercises || []).forEach(add);
-  getDefaultExercisesFromWorkoutData().forEach(add);
-  LEGACY_EXERCISES.forEach(add);
+getDefaultExercisesFromWorkoutData().forEach(add);
+LEGACY_EXERCISES.forEach(add);
+(existingExercises || []).forEach(add);
 
   // Recompute assignedTo from programmes
   const assignedMap = new Map();
