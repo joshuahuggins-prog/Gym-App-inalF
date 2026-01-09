@@ -249,19 +249,58 @@ export const updateSettings = (updates) =>
   });
 
 // =====================
-// Personal Records (PRs)
+// Personal Records (PRs) — backwards compatible
 // =====================
+
+// Old behaviour used "exercise name" -> key: lower + underscores
+const toLegacyPrKey = (s) =>
+  (s || "")
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+// Canonical key: prefer IDs if they already look like IDs, otherwise legacy transform
+const toPrKey = (exerciseIdOrName) => {
+  const raw = normalizeId(exerciseIdOrName);
+  if (!raw) return "";
+
+  // If it already looks like an ID (contains underscore, no spaces), keep it
+  if (raw.includes("_") && !raw.includes(" ")) return raw.toLowerCase();
+
+  // Otherwise fall back to legacy transform
+  return toLegacyPrKey(raw);
+};
+
 export const getPersonalRecords = () => {
-  return getStorageData(STORAGE_KEYS.PERSONAL_RECORDS) || {};
+  const prs = getStorageData(STORAGE_KEYS.PERSONAL_RECORDS) || {};
+
+  // Ensure each PR has exerciseName populated (for UI like StatsPage)
+  // (does not change keys)
+  let changed = false;
+  Object.keys(prs).forEach((k) => {
+    if (prs[k] && !prs[k].exerciseName) {
+      prs[k].exerciseName = k.replace(/_/g, " ");
+      changed = true;
+    }
+  });
+
+  if (changed) setStorageData(STORAGE_KEYS.PERSONAL_RECORDS, prs);
+  return prs;
 };
 
 /**
- * Update a PR by exercise ID (preferred).
- * Only overwrites if the new weight is greater (simple rule).
+ * Backwards compatible updater:
+ * - Accepts exerciseId OR exerciseName as first param
+ * - Stores PR under a stable key (underscored)
+ * - Fills exerciseName for UI
+ * - Only overwrites PR if weight increases (same rule as before)
  */
-export const updatePersonalRecord = (exerciseId, weight, reps, date) => {
+export const updatePersonalRecord = (exerciseIdOrName, weight, reps, date) => {
   const prs = getPersonalRecords();
-  const key = normalizeId(exerciseId);
+
+  const key = toPrKey(exerciseIdOrName);
+  if (!key) return false;
 
   const w = Number(weight);
   const r = Number(reps);
@@ -270,10 +309,18 @@ export const updatePersonalRecord = (exerciseId, weight, reps, date) => {
   if (!Number.isFinite(r) || r <= 0) return false;
 
   const prev = prs[key];
+  const prevWeight = prev ? Number(prev.weight || 0) : 0;
 
-  if (!prev || w > Number(prev.weight || 0)) {
+  // Build a friendly name for display
+  const displayName =
+    prev?.exerciseName ||
+    (normalizeId(exerciseIdOrName).includes("_")
+      ? key.replace(/_/g, " ")
+      : normalizeId(exerciseIdOrName));
+
+  if (!prev || w > prevWeight) {
     prs[key] = {
-      exerciseName: prev?.exerciseName || key, // UI can replace with proper name
+      exerciseName: displayName,
       weight: w,
       reps: r,
       date: date || new Date().toISOString(),
