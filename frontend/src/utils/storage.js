@@ -249,6 +249,44 @@ export const updateSettings = (updates) =>
   });
 
 // =====================
+// Personal Records (PRs)
+// =====================
+export const getPersonalRecords = () => {
+  return getStorageData(STORAGE_KEYS.PERSONAL_RECORDS) || {};
+};
+
+/**
+ * Update a PR by exercise ID (preferred).
+ * Only overwrites if the new weight is greater (simple rule).
+ */
+export const updatePersonalRecord = (exerciseId, weight, reps, date) => {
+  const prs = getPersonalRecords();
+  const key = normalizeId(exerciseId);
+
+  const w = Number(weight);
+  const r = Number(reps);
+
+  if (!Number.isFinite(w) || w <= 0) return false;
+  if (!Number.isFinite(r) || r <= 0) return false;
+
+  const prev = prs[key];
+
+  if (!prev || w > Number(prev.weight || 0)) {
+    prs[key] = {
+      exerciseName: prev?.exerciseName || key, // UI can replace with proper name
+      weight: w,
+      reps: r,
+      date: date || new Date().toISOString(),
+      previousWeight: prev?.weight ?? null,
+    };
+    setStorageData(STORAGE_KEYS.PERSONAL_RECORDS, prs);
+    return true;
+  }
+
+  return false;
+};
+
+// =====================
 // Video links
 // =====================
 export const getVideoLinks = () =>
