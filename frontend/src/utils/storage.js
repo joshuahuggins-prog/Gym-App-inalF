@@ -8,8 +8,8 @@ export const initStorage = () => {
     const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY);
     const version = storedVersion ? parseInt(storedVersion, 10) : 0;
 
-    // ===== Migration to v4 =====
-    if (version < 4) {
+    // ===== Migration to v5 =====
+    if (version < 5) {
       const programmes = JSON.parse(
         localStorage.getItem(STORAGE_KEYS.PROGRAMMES) || "null"
       );
