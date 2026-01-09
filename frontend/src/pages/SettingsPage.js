@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+// src/pages/SettingsPage.js
+
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Save,
-  TrendingUp,
-  Settings as SettingsIcon,
   AlertTriangle,
   ListOrdered,
+  Save,
+  Settings as SettingsIcon,
+  TrendingUp,
 } from "lucide-react";
 
 import { Button } from "../components/ui/button";
@@ -20,8 +22,16 @@ import {
   parseWorkoutPattern,
   getUsableProgrammes,
   setWorkoutPatternIndex,
-  resetWithBackup, // ✅ Force Update
+  resetWithBackup,
 } from "../utils/storage";
+
+// ✅ App version display (CRA/CRACO supports importing package.json)
+import pkg from "../../package.json";
+
+const numberOrFallback = (value, fallback) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
 
 const SettingsPage = () => {
   const { weightUnit, toggleWeightUnit } = useSettings();
@@ -29,26 +39,42 @@ const SettingsPage = () => {
   const [progressionSettings, setProgressionSettings] = useState(null);
   const [workoutPattern, setWorkoutPatternState] = useState("");
 
-  // Load settings on mount
+  const usableProgrammeTypes = useMemo(() => {
+    return getUsableProgrammes().map((p) => String(p.type).toUpperCase());
+  }, []);
+
   useEffect(() => {
     setProgressionSettings(getProgressionSettings());
     setWorkoutPatternState(getWorkoutPattern());
   }, []);
 
-  // Save progression settings
   const handleSaveProgression = () => {
-    updateProgressionSettings(progressionSettings);
+    if (!progressionSettings) return;
+
+    const cleaned = {
+      ...progressionSettings,
+      globalIncrementKg: numberOrFallback(progressionSettings.globalIncrementKg, 2.5),
+      globalIncrementLbs: numberOrFallback(progressionSettings.globalIncrementLbs, 5),
+      rptSet2Percentage: numberOrFallback(progressionSettings.rptSet2Percentage, 90),
+      rptSet3Percentage: numberOrFallback(progressionSettings.rptSet3Percentage, 80),
+      exerciseSpecific: progressionSettings.exerciseSpecific || {},
+    };
+
+    updateProgressionSettings(cleaned);
+    setProgressionSettings(cleaned);
     toast.success("Progression settings saved");
   };
 
-  // Save workout pattern
   const handleSavePattern = () => {
     const parsed = parseWorkoutPattern(workoutPattern);
-    const usable = getUsableProgrammes().map((p) => p.type);
+    if (parsed.length === 0) {
+      toast.error("Please enter a pattern like A,B,A,B");
+      return;
+    }
 
-    const valid = parsed.every((p) => usable.includes(p));
+    const valid = parsed.every((p) => usableProgrammeTypes.includes(p));
     if (!valid) {
-      toast.error("Workout pattern contains invalid workout letters");
+      toast.error(`Invalid letters. Allowed: ${usableProgrammeTypes.join(", ")}`);
       return;
     }
 
@@ -57,16 +83,15 @@ const SettingsPage = () => {
     toast.success("Workout pattern saved");
   };
 
-  // 🔥 Force Update (keep data)
-  const handleResetWithBackup = async () => {
+  const handleForceUpdate = async () => {
     const ok = window.confirm(
-      "This will back up your data, reset the app storage, then restore the backup.\n\nUse this only if something looks broken after an update.Please backup data manually first using the export button in the data tab. \n\nContinue?"
+      "Force Update will:\n\n1) Back up your data\n2) Reset local app storage\n3) Restore your backup\n\nThis is safe for history, but please export a manual backup first (Data tab), just in case.\n\nContinue?"
     );
     if (!ok) return;
 
     const res = await resetWithBackup({ merge: false });
     if (!res?.success) {
-      alert(res?.error || "Reset failed");
+      alert(res?.error || "Force Update failed");
     }
   };
 
@@ -75,13 +100,20 @@ const SettingsPage = () => {
   return (
     <div className="space-y-8 p-4 max-w-xl mx-auto">
       {/* ===== Header ===== */}
-      <div className="flex items-center gap-2">
-        <SettingsIcon className="h-6 w-6" />
-        <h1 className="text-xl font-bold">Settings</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <SettingsIcon className="h-6 w-6" />
+          <h1 className="text-xl font-bold">Settings</h1>
+        </div>
+
+        {/* ✅ Version */}
+        <div className="text-xs text-muted-foreground">
+          Version {pkg?.version || "unknown"}
+        </div>
       </div>
 
       {/* ===== Units ===== */}
-      <div className="space-y-2">
+      <section className="space-y-2">
         <h2 className="font-semibold flex items-center gap-2">
           <TrendingUp className="h-4 w-4" />
           Units
@@ -89,75 +121,89 @@ const SettingsPage = () => {
         <Button onClick={toggleWeightUnit}>
           Switch to {weightUnit === "kg" ? "lbs" : "kg"}
         </Button>
-      </div>
+      </section>
 
       {/* ===== Progression Settings ===== */}
-      <div className="space-y-3">
+      <section className="space-y-3">
         <h2 className="font-semibold flex items-center gap-2">
           <Save className="h-4 w-4" />
           Progression
         </h2>
 
         <div className="grid grid-cols-2 gap-2">
-          <Input
-            type="number"
-            value={progressionSettings.globalIncrementKg}
-            onChange={(e) =>
-              setProgressionSettings({
-                ...progressionSettings,
-                globalIncrementKg: Number(e.target.value),
-              })
-            }
-            placeholder="Kg increment"
-          />
-          <Input
-            type="number"
-            value={progressionSettings.globalIncrementLbs}
-            onChange={(e) =>
-              setProgressionSettings({
-                ...progressionSettings,
-                globalIncrementLbs: Number(e.target.value),
-              })
-            }
-            placeholder="Lb increment"
-          />
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground">Global increment (kg)</div>
+            <Input
+              type="number"
+              inputMode="decimal"
+              value={progressionSettings.globalIncrementKg ?? ""}
+              onChange={(e) =>
+                setProgressionSettings((prev) => ({
+                  ...prev,
+                  globalIncrementKg: e.target.value,
+                }))
+              }
+              placeholder="2.5"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground">Global increment (lbs)</div>
+            <Input
+              type="number"
+              inputMode="decimal"
+              value={progressionSettings.globalIncrementLbs ?? ""}
+              onChange={(e) =>
+                setProgressionSettings((prev) => ({
+                  ...prev,
+                  globalIncrementLbs: e.target.value,
+                }))
+              }
+              placeholder="5"
+            />
+          </div>
         </div>
 
         <Button onClick={handleSaveProgression}>Save progression</Button>
-      </div>
+      </section>
 
       {/* ===== Workout Pattern ===== */}
-      <div className="space-y-3">
+      <section className="space-y-3">
         <h2 className="font-semibold flex items-center gap-2">
           <ListOrdered className="h-4 w-4" />
           Workout pattern
         </h2>
 
+        <div className="text-xs text-muted-foreground">
+          Allowed: {usableProgrammeTypes.join(", ")} (e.g. A,B,A,B)
+        </div>
+
         <Input
           value={workoutPattern}
           onChange={(e) => setWorkoutPatternState(e.target.value)}
           placeholder="e.g. A,B,A,B"
+          autoCapitalize="characters"
         />
 
         <Button onClick={handleSavePattern}>Save pattern</Button>
-      </div>
+      </section>
 
       {/* ===== Force Update ===== */}
-      <div className="rounded-xl border border-red-500/40 p-4 space-y-3">
+      <section className="rounded-xl border border-red-500/40 p-4 space-y-3">
         <div className="flex items-center gap-2 text-red-500">
           <AlertTriangle className="h-5 w-5" />
           <h2 className="font-semibold">Force Update</h2>
         </div>
 
         <p className="text-sm opacity-80">
-          Back up your data, reset local storage, then restore the backup.
-          Use this if something looks stuck after an update.
+          Rebuilds local app data after an update by backing up, resetting storage,
+          then restoring your backup. Use only if something looks stuck.
         </p>
 
-        <Button variant="destructive" onClick={handleResetWithBackup}>
-          Reset app (keep data)
+        <Button variant="destructive" onClick={handleForceUpdate}>
+          Force Update (keep data)
         </Button>
-      </div>
+      </section>
     </div>
   );
 };
