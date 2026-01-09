@@ -425,6 +425,113 @@ export const getNextWorkoutTypeFromPattern = () => {
 };
 
 // =====================
+// Export/Import CSV
+// =====================
+export const exportToCSV = () => {
+  const workouts = getWorkouts();
+  if (!Array.isArray(workouts) || workouts.length === 0) return null;
+
+  const headers = ["Date", "Workout", "Exercise", "Set", "Weight", "Reps", "Notes"];
+  const rows = [];
+
+  workouts.forEach((workout) => {
+    (workout.exercises || []).forEach((exercise) => {
+      (exercise.sets || []).forEach((set, idx) => {
+        rows.push([
+          new Date(workout.date).toLocaleDateString(),
+          workout.type || "",
+          exercise.name || "",
+          idx + 1,
+          set.weight ?? "",
+          set.reps ?? "",
+          exercise.notes || "",
+        ]);
+      });
+    });
+  });
+
+  return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+};
+
+export const importFromCSV = (csvText) => {
+  try {
+    const lines = (csvText || "").trim().split("\n");
+    if (lines.length < 2) {
+      return { success: false, error: "CSV file is empty or invalid" };
+    }
+
+    const headers = lines[0].split(",").map((h) => h.trim());
+    const requiredHeaders = ["Date", "Workout", "Exercise", "Set", "Weight", "Reps"];
+
+    const hasAllHeaders = requiredHeaders.every((h) => headers.includes(h));
+    if (!hasAllHeaders) {
+      return {
+        success: false,
+        error: `Missing required headers. Expected: ${requiredHeaders.join(", ")}`,
+      };
+    }
+
+    const workoutMap = new Map();
+    const errors = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(",").map((v) => v.trim());
+      if (values.length < 6) {
+        errors.push(`Line ${i + 1}: Insufficient columns`);
+        continue;
+      }
+
+      const [date, workoutType, exerciseName, setNum, weight, reps, notes = ""] = values;
+
+      if (!date || !workoutType || !exerciseName) {
+        errors.push(`Line ${i + 1}: Missing required fields`);
+        continue;
+      }
+
+      const workoutKey = `${date}_${workoutType}`;
+
+      if (!workoutMap.has(workoutKey)) {
+        workoutMap.set(workoutKey, {
+          id: `import_${Date.now()}_${i}`,
+          date: new Date(date).toISOString(),
+          type: workoutType,
+          exercises: [],
+        });
+      }
+
+      const workout = workoutMap.get(workoutKey);
+
+      let exerciseObj = workout.exercises.find((e) => e.name === exerciseName);
+      if (!exerciseObj) {
+        exerciseObj = { name: exerciseName, sets: [], notes };
+        workout.exercises.push(exerciseObj);
+      }
+
+      exerciseObj.sets.push({
+        weight: parseFloat(weight) || 0,
+        reps: parseInt(reps, 10) || 0,
+        completed: true,
+        setNumber: parseInt(setNum, 10) || exerciseObj.sets.length + 1,
+      });
+    }
+
+    const importedWorkouts = Array.from(workoutMap.values());
+    const existing = getWorkouts();
+    const combined = [...importedWorkouts, ...existing];
+
+    setStorageData(STORAGE_KEYS.WORKOUTS, combined);
+
+    return {
+      success: true,
+      imported: importedWorkouts.length,
+      errors: errors.length > 0 ? errors : null,
+    };
+  } catch (e) {
+    return { success: false, error: `Failed to parse CSV: ${e.message}` };
+  }
+};
+
+// =====================
 // Force Update
 // =====================
 export const resetAllLocalData = async () => {
