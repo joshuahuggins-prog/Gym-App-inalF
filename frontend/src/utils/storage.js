@@ -19,7 +19,7 @@ export const initStorage = () => {
 
       // Only run if both exist
       if (Array.isArray(programmes) && Array.isArray(exercises)) {
-        const deadliftId = "db_bulgarian_deadlifts";
+        const deadliftId = "db_romanian_deadlifts";
 
         // 1) Replace seated cable rows -> deadlifts in programmes
         const updatedProgrammes = replaceExerciseInProgrammes(
@@ -27,7 +27,7 @@ export const initStorage = () => {
           "seated_cable_rows",
           {
             id: deadliftId,
-            name: "DB Bulgarian Deadlifts",
+            name: "DB Romanian Deadlifts",
             notes: "Hip hinge, dumbbells, slight knee bend",
           }
         );
@@ -46,7 +46,7 @@ export const initStorage = () => {
             ...exercises,
             {
               id: deadliftId,
-              name: "DB Bulgarian Deadlifts",
+              name: "DB Romanian Deadlifts",
               sets: 3,
               repScheme: "RPT",
               goalReps: [6, 8, 10],
