@@ -276,6 +276,70 @@ export const updateProgressionSettings = (settings) =>
   setStorageData(STORAGE_KEYS.PROGRESSION_SETTINGS, settings);
 
 // =====================
+// Workout Pattern Helpers
+// =====================
+export const getWorkoutPattern = () => {
+  // Default pattern if user never sets one
+  return getStorageData(STORAGE_KEYS.WORKOUT_PATTERN) || "A,B";
+};
+
+export const setWorkoutPattern = (patternString) => {
+  // Store raw string (validated elsewhere)
+  return setStorageData(STORAGE_KEYS.WORKOUT_PATTERN, patternString);
+};
+
+export const getWorkoutPatternIndex = () => {
+  return getStorageData(STORAGE_KEYS.WORKOUT_PATTERN_INDEX) || 0;
+};
+
+export const setWorkoutPatternIndex = (index) => {
+  return setStorageData(STORAGE_KEYS.WORKOUT_PATTERN_INDEX, index);
+};
+
+// Parse "A,B,B,C" -> ["A","B","B","C"]
+export const parseWorkoutPattern = (patternString) => {
+  return (patternString || "")
+    .split(",")
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+};
+
+// "Usable" programmes = have 1+ exercises
+export const getUsableProgrammes = () => {
+  return getProgrammes().filter(
+    (p) => Array.isArray(p.exercises) && p.exercises.length > 0
+  );
+};
+
+// Decide next workout type from pattern + usable programmes
+export const getNextWorkoutTypeFromPattern = () => {
+  const usable = getUsableProgrammes();
+  if (usable.length === 0) return null;
+
+  const usableTypes = new Set(usable.map((p) => String(p.type).toUpperCase()));
+
+  const patternStr = getWorkoutPattern();
+  const pattern = parseWorkoutPattern(patternStr);
+
+  // If pattern empty, fall back to alphabetical usable types
+  const safePattern = pattern.length > 0 ? pattern : Array.from(usableTypes).sort();
+
+  // Filter pattern to only usable types
+  const filtered = safePattern.filter((t) => usableTypes.has(t));
+
+  // If user entered only invalid letters, fall back again
+  const finalPattern = filtered.length > 0 ? filtered : Array.from(usableTypes).sort();
+
+  const i = getWorkoutPatternIndex() % finalPattern.length;
+  const nextType = finalPattern[i];
+
+  // Advance index for next time
+  setWorkoutPatternIndex((i + 1) % finalPattern.length);
+
+  return nextType;
+};
+
+// =====================
 // Force Update
 // =====================
 export const resetAllLocalData = async () => {
