@@ -20,7 +20,7 @@ export const WORKOUT_A = {
       sets: 3,
       repScheme: 'RPT',
       goalReps: [6, 8, 10],
-      restTime: 180,
+      restTime: 120,
       notes: '30-45 degree incline angle'
     },
     {
@@ -35,9 +35,9 @@ export const WORKOUT_A = {
     {
       id: 'overhead_press',
       name: 'Overhead Press',
-      sets: 2,
+      sets: 3,
       repScheme: 'RPT',
-      goalReps: [8, 10],
+      goalReps: [6, 8, 10],
       restTime: 180,
       notes: 'Standing or seated barbell/dumbbell press'
     },
