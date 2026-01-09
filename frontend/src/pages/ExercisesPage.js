@@ -29,8 +29,7 @@ import {
 } from "../utils/storage";
 import { toast } from "sonner";
 
-const MAX_REP_TARGETS = 8;
-
+const MAX_SETS = 8; // ✅ limit sets (dropdown)
 const ExercisesPage = () => {
   const [exercises, setExercises] = useState([]);
   const [programmes, setProgrammes] = useState([]);
@@ -38,7 +37,9 @@ const ExercisesPage = () => {
   const [filterProgramme, setFilterProgramme] = useState("all");
   const [editingExercise, setEditingExercise] = useState(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
-const [repTargetCountDraft, setRepTargetCountDraft] = useState("");
+
+  // draft string so user can clear/type without input getting "stuck"
+  const [repTargetCountDraft, setRepTargetCountDraft] = useState("");
 
   useEffect(() => {
     loadData();
@@ -49,29 +50,31 @@ const [repTargetCountDraft, setRepTargetCountDraft] = useState("");
     setProgrammes(getProgrammes());
   };
 
- const handleCreateExercise = () => {
-  setEditingExercise({
-    id: `exercise_${Date.now()}`,
-    name: "",
-    sets: 3,
-    repScheme: "RPT",
-    goalReps: [8, 10, 12],
-    restTime: 120,
-    notes: "",
-    assignedTo: [],
-    videoUrl: "",
-  });
-  setRepTargetCountDraft("3");
-  setShowEditDialog(true);
-};
+  const handleCreateExercise = () => {
+    const goalReps = [8, 10, 12];
+    setEditingExercise({
+      id: `exercise_${Date.now()}`,
+      name: "",
+      sets: 3,
+      repScheme: "RPT",
+      goalReps,
+      restTime: 120,
+      notes: "",
+      assignedTo: [],
+      videoUrl: "",
+    });
+    setRepTargetCountDraft(String(goalReps.length));
+    setShowEditDialog(true);
+  };
 
-const handleEditExercise = (exercise) => {
-  const videoLinks = getVideoLinks();
-  const videoUrl = videoLinks[exercise.id] || "";
-  setEditingExercise({ ...exercise, videoUrl });
-  setRepTargetCountDraft(String((exercise.goalReps || []).length || 1));
-  setShowEditDialog(true);
-};
+  const handleEditExercise = (exercise) => {
+    const videoLinks = getVideoLinks();
+    const videoUrl = videoLinks[exercise.id] || "";
+    const goalReps = Array.isArray(exercise.goalReps) && exercise.goalReps.length > 0 ? exercise.goalReps : [8];
+    setEditingExercise({ ...exercise, goalReps, videoUrl });
+    setRepTargetCountDraft(String(goalReps.length));
+    setShowEditDialog(true);
+  };
 
   const handleSaveExercise = () => {
     if (!editingExercise?.name) {
@@ -81,19 +84,21 @@ const handleEditExercise = (exercise) => {
 
     const { videoUrl, ...exerciseData } = editingExercise;
 
-// ✅ Clean goalReps (handle blanks, coerce to numbers, clamp range)
-const rawGoalReps = Array.isArray(exerciseData.goalReps) ? exerciseData.goalReps : [];
+    // ✅ Clean goalReps (open-ended count, open-ended values)
+    const rawGoalReps = Array.isArray(exerciseData.goalReps) ? exerciseData.goalReps : [];
+    const cleanedGoalReps = rawGoalReps
+      .map((x) => (x === "" || x == null ? null : Number(x)))
+      .filter((n) => Number.isFinite(n) && n > 0)
+      .map((n) => Math.max(1, Math.min(200, n))); // clamp reps 1–200 (effectively "open")
 
-const cleanedGoalReps = rawGoalReps
-  .map((x) => (x === "" || x == null ? null : Number(x)))
-  .filter((n) => Number.isFinite(n) && n > 0)
-  .map((n) => Math.max(1, Math.min(50, n))); // clamp 1–50
+    exerciseData.goalReps = cleanedGoalReps.length > 0 ? cleanedGoalReps : [8];
 
-exerciseData.goalReps = cleanedGoalReps.length > 0 ? cleanedGoalReps : [8];
-    // ✅ Clean sets/restTime if user cleared inputs
+    // ✅ Sets comes from dropdown, but still guard
     const setsNum = Number(exerciseData.sets);
-    exerciseData.sets = Number.isFinite(setsNum) && setsNum > 0 ? setsNum : 3;
+    exerciseData.sets =
+      Number.isFinite(setsNum) && setsNum >= 1 ? Math.min(MAX_SETS, setsNum) : 3;
 
+    // ✅ Rest time guard
     const restNum = Number(exerciseData.restTime);
     exerciseData.restTime =
       Number.isFinite(restNum) && restNum > 0 ? restNum : 120;
@@ -282,7 +287,16 @@ exerciseData.goalReps = cleanedGoalReps.length > 0 ? cleanedGoalReps : [8];
       </div>
 
       {/* Edit Exercise Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+      <Dialog
+        open={showEditDialog}
+        onOpenChange={(open) => {
+          setShowEditDialog(open);
+          if (!open) {
+            setEditingExercise(null);
+            setRepTargetCountDraft("");
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -312,26 +326,31 @@ exerciseData.goalReps = cleanedGoalReps.length > 0 ? cleanedGoalReps : [8];
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-foreground block mb-2">
-                    Number of Sets
+                    Number of Sets (max {MAX_SETS})
                   </label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={editingExercise.sets ?? ""}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") {
-                        setEditingExercise({ ...editingExercise, sets: "" });
-                        return;
-                      }
-                      const n = Number(raw);
+
+                  {/* ✅ Dropdown for sets */}
+                  <Select
+                    value={String(editingExercise.sets ?? 3)}
+                    onValueChange={(value) => {
+                      const n = Number(value);
                       setEditingExercise({
                         ...editingExercise,
                         sets: Number.isFinite(n) ? n : 3,
                       });
                     }}
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: MAX_SETS }, (_, i) => i + 1).map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
@@ -357,7 +376,7 @@ exerciseData.goalReps = cleanedGoalReps.length > 0 ? cleanedGoalReps : [8];
                 </div>
               </div>
 
-              {/* Goal Reps - NEW UI */}
+              {/* Goal Reps - open-ended values, user controls count */}
               <div className="space-y-3">
                 <label className="text-sm font-medium text-foreground block">
                   Goal Reps
@@ -366,25 +385,24 @@ exerciseData.goalReps = cleanedGoalReps.length > 0 ? cleanedGoalReps : [8];
                 <div className="grid grid-cols-2 gap-4 items-end">
                   <div>
                     <label className="text-xs text-muted-foreground block mb-1">
-                      Number of rep targets (max {MAX_REP_TARGETS})
+                      Number of rep targets (no max)
                     </label>
                     <Input
                       type="number"
                       min="1"
-                      max={MAX_REP_TARGETS}
-                      value={
-                        Array.isArray(editingExercise.goalReps)
-                          ? editingExercise.goalReps.length
-                          : 1
-                      }
+                      value={repTargetCountDraft}
                       onChange={(e) => {
                         const raw = e.target.value;
+                        setRepTargetCountDraft(raw);
+
+                        // allow blank while typing
                         if (raw === "") return;
 
                         let n = Number(raw);
                         if (!Number.isFinite(n)) return;
 
-                        n = Math.max(1, Math.min(MAX_REP_TARGETS, n));
+                        // keep it sane without imposing "8"
+                        n = Math.max(1, Math.min(50, n));
 
                         const current = Array.isArray(editingExercise.goalReps)
                           ? editingExercise.goalReps
@@ -396,12 +414,20 @@ exerciseData.goalReps = cleanedGoalReps.length > 0 ? cleanedGoalReps : [8];
                         });
 
                         setEditingExercise({ ...editingExercise, goalReps: next });
+                        setRepTargetCountDraft(String(n));
+                      }}
+                      onBlur={() => {
+                        if (repTargetCountDraft === "") {
+                          setRepTargetCountDraft(
+                            String((editingExercise.goalReps || []).length || 1)
+                          );
+                        }
                       }}
                     />
                   </div>
 
                   <div className="text-xs text-muted-foreground">
-                    Set this equal to your number of sets for most schemes.
+                    Tip: often match this to your sets. You can go higher if you want.
                   </div>
                 </div>
 
@@ -414,7 +440,6 @@ exerciseData.goalReps = cleanedGoalReps.length > 0 ? cleanedGoalReps : [8];
                       <Input
                         type="number"
                         min="1"
-                        max="50"
                         value={rep === "" || rep == null ? "" : rep}
                         onChange={(e) => {
                           const raw = e.target.value;
@@ -551,6 +576,7 @@ exerciseData.goalReps = cleanedGoalReps.length > 0 ? cleanedGoalReps : [8];
               onClick={() => {
                 setShowEditDialog(false);
                 setEditingExercise(null);
+                setRepTargetCountDraft("");
               }}
             >
               Cancel
