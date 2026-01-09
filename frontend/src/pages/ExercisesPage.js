@@ -38,6 +38,7 @@ const ExercisesPage = () => {
   const [filterProgramme, setFilterProgramme] = useState("all");
   const [editingExercise, setEditingExercise] = useState(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+const [repTargetCountDraft, setRepTargetCountDraft] = useState("");
 
   useEffect(() => {
     loadData();
@@ -48,27 +49,29 @@ const ExercisesPage = () => {
     setProgrammes(getProgrammes());
   };
 
-  const handleCreateExercise = () => {
-    setEditingExercise({
-      id: `exercise_${Date.now()}`,
-      name: "",
-      sets: 3,
-      repScheme: "RPT",
-      goalReps: [8, 10, 12],
-      restTime: 120,
-      notes: "",
-      assignedTo: [],
-      videoUrl: "",
-    });
-    setShowEditDialog(true);
-  };
+ const handleCreateExercise = () => {
+  setEditingExercise({
+    id: `exercise_${Date.now()}`,
+    name: "",
+    sets: 3,
+    repScheme: "RPT",
+    goalReps: [8, 10, 12],
+    restTime: 120,
+    notes: "",
+    assignedTo: [],
+    videoUrl: "",
+  });
+  setRepTargetCountDraft("3");
+  setShowEditDialog(true);
+};
 
-  const handleEditExercise = (exercise) => {
-    const videoLinks = getVideoLinks();
-    const videoUrl = videoLinks[exercise.id] || "";
-    setEditingExercise({ ...exercise, videoUrl });
-    setShowEditDialog(true);
-  };
+const handleEditExercise = (exercise) => {
+  const videoLinks = getVideoLinks();
+  const videoUrl = videoLinks[exercise.id] || "";
+  setEditingExercise({ ...exercise, videoUrl });
+  setRepTargetCountDraft(String((exercise.goalReps || []).length || 1));
+  setShowEditDialog(true);
+};
 
   const handleSaveExercise = () => {
     if (!editingExercise?.name) {
@@ -78,16 +81,15 @@ const ExercisesPage = () => {
 
     const { videoUrl, ...exerciseData } = editingExercise;
 
-    // ✅ Clean goalReps (remove blanks, coerce to numbers)
-    exerciseData.goalReps = (exerciseData.goalReps || [])
-      .filter((x) => x !== "" && x != null)
-      .map((x) => Number(x))
-      .filter((n) => Number.isFinite(n) && n > 0);
+// ✅ Clean goalReps (handle blanks, coerce to numbers, clamp range)
+const rawGoalReps = Array.isArray(exerciseData.goalReps) ? exerciseData.goalReps : [];
 
-    if (exerciseData.goalReps.length === 0) {
-      exerciseData.goalReps = [8];
-    }
+const cleanedGoalReps = rawGoalReps
+  .map((x) => (x === "" || x == null ? null : Number(x)))
+  .filter((n) => Number.isFinite(n) && n > 0)
+  .map((n) => Math.max(1, Math.min(50, n))); // clamp 1–50
 
+exerciseData.goalReps = cleanedGoalReps.length > 0 ? cleanedGoalReps : [8];
     // ✅ Clean sets/restTime if user cleared inputs
     const setsNum = Number(exerciseData.sets);
     exerciseData.sets = Number.isFinite(setsNum) && setsNum > 0 ? setsNum : 3;
