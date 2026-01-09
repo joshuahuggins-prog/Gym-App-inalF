@@ -218,6 +218,20 @@ export const saveWorkout = (workout) => {
   });
   return setStorageData(STORAGE_KEYS.WORKOUTS, workouts);
 };
+export const updateWorkout = (id, updates) => {
+  const workouts = getWorkouts();
+  const index = workouts.findIndex((w) => w.id === id);
+  if (index === -1) return false;
+
+  workouts[index] = { ...workouts[index], ...updates };
+  return setStorageData(STORAGE_KEYS.WORKOUTS, workouts);
+};
+
+export const deleteWorkout = (id) => {
+  const workouts = getWorkouts();
+  const filtered = workouts.filter((w) => w.id !== id);
+  return setStorageData(STORAGE_KEYS.WORKOUTS, filtered);
+};
 
 // =====================
 // Settings
