@@ -57,10 +57,10 @@ const SettingsPage = () => {
     toast.success("Workout pattern saved");
   };
 
-  // 🔥 Nuclear option
+  // 🔥 Force Update (keep data)
   const handleResetWithBackup = async () => {
     const ok = window.confirm(
-      "This will back up your data, reset the app storage, then restore the backup.\n\nUse this only if something looks broken after an update.\n\nContinue?"
+      "This will back up your data, reset the app storage, then restore the backup.\n\nUse this only if something looks broken after an update.Please backup data manually first using the export button in the data tab. \n\nContinue?"
     );
     if (!ok) return;
 
