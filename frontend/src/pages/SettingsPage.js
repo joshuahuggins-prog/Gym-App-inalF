@@ -146,7 +146,7 @@ const SettingsPage = () => {
       <div className="rounded-xl border border-red-500/40 p-4 space-y-3">
         <div className="flex items-center gap-2 text-red-500">
           <AlertTriangle className="h-5 w-5" />
-          <h2 className="font-semibold">Nuclear option</h2>
+          <h2 className="font-semibold">Force Update</h2>
         </div>
 
         <p className="text-sm opacity-80">
