@@ -425,45 +425,45 @@ export const deleteProgramme = (type) => {
 
 // Exercises Management
 export const getExercises = () => {
-  const exercises = getStorageData(STORAGE_KEYS.EXERCISES);
-  if (!exercises || exercises.length === 0) {
-    // Initialize with default exercises
-    const programmes = getProgrammes();
-    const allExercises = [];
-    
-    programmes.forEach(prog => {
-      prog.exercises.forEach(ex => {
-        if (!allExercises.find(e => e.id === ex.id)) {
-          allExercises.push({
-            ...ex,
-            assignedTo: [prog.type]
-          });
-        } else {
-          const existing = allExercises.find(e => e.id === ex.id);
-          if (!existing.assignedTo.includes(prog.type)) {
-            existing.assignedTo.push(prog.type);
-          }
-        }
-      });
-    });
-    
-    setStorageData(STORAGE_KEYS.EXERCISES, allExercises);
-    return allExercises;
+  const stored = getStorageData(STORAGE_KEYS.EXERCISES);
+  const programmes = getProgrammes();
+
+  // If empty, build a catalogue from defaults + legacy
+  if (!stored || stored.length === 0) {
+    const rebuilt = rebuildExerciseCatalogue(programmes, []);
+    setStorageData(STORAGE_KEYS.EXERCISES, rebuilt);
+    return rebuilt;
   }
-  return exercises;
+
+  // If present, ensure it still contains defaults/legacy (prevents missing items after edits)
+  const merged = rebuildExerciseCatalogue(programmes, stored);
+
+  // Persist merged catalogue (idempotent; keeps things consistent across updates)
+  setStorageData(STORAGE_KEYS.EXERCISES, merged);
+  return merged;
 };
 
 export const saveExercise = (exercise) => {
-  const exercises = getExercises().filter(e => !e.hidden);
-  const existing = exercises.find(e => e.id === exercise.id);
-  
-  if (existing) {
-    const updated = exercises.map(e => e.id === exercise.id ? exercise : e);
-    return setStorageData(STORAGE_KEYS.EXERCISES, updated);
+  const exercises = getExercises();
+  const id = normalizeId(exercise?.id);
+  if (!id) return false;
+
+  const index = exercises.findIndex((e) => normalizeId(e?.id) === id);
+  if (index !== -1) {
+    // Preserve existing hidden flag unless explicitly set
+    const prev = exercises[index] || {};
+    const next = {
+      ...prev,
+      ...exercise,
+      id,
+      hidden: typeof exercise.hidden === "boolean" ? exercise.hidden : prev.hidden,
+    };
+    exercises[index] = next;
   } else {
-    exercises.push(exercise);
-    return setStorageData(STORAGE_KEYS.EXERCISES, exercises);
+    exercises.push({ ...exercise, id });
   }
+
+  return setStorageData(STORAGE_KEYS.EXERCISES, exercises);
 };
 
 export const deleteExercise = (id) => {
