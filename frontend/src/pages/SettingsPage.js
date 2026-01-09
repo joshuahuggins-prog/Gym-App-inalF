@@ -7,13 +7,6 @@ import {
   ListOrdered,
 } from "lucide-react";
 
-import { resetWithBackup } from "../utils/storage";
-
-const onReset = async () => {
-  const res = await resetWithBackup({ merge: false });
-  if (!res.success) alert(res.error);
-};
-
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { useSettings } from "../contexts/SettingsContext";
@@ -24,12 +17,12 @@ import {
   updateProgressionSettings,
   getExercises,
   resetAllLocalData,
-  // Pattern helpers
   getWorkoutPattern,
   setWorkoutPattern,
   parseWorkoutPattern,
   getUsableProgrammes,
   setWorkoutPatternIndex,
+  resetWithBackup,          // ✅ add it here (same import)
 } from "../utils/storage";
 
 const SettingsPage = () => {
