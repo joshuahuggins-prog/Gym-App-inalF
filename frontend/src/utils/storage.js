@@ -440,6 +440,23 @@ export const saveExercise = (exercise) => {
     exercises.push({ ...exercise, id });
   }
 
+// ✅ Coerce numeric fields (prevents "" / strings breaking saves)
+  const setsNum = Number(exercise.sets);
+  exercise.sets = Number.isFinite(setsNum) && setsNum > 0 ? setsNum : 3;
+
+  const restNum = Number(exercise.restTime);
+  exercise.restTime = Number.isFinite(restNum) && restNum > 0 ? restNum : 120;
+
+  // ✅ Ensure goalReps is a clean number array
+  const rawGoalReps = Array.isArray(exercise.goalReps) ? exercise.goalReps : [];
+  const cleanedGoalReps = rawGoalReps
+    .map((x) => (x === "" || x == null ? null : Number(x)))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  exercise.goalReps = cleanedGoalReps.length ? cleanedGoalReps : [8, 10, 12];
+
+  // ✅ Update the exercise inside programmes too
+  syncExerciseFieldsIntoProgrammes(exercise);
+  
   // --- 2) IMPORTANT: sync programmes based on exercise.assignedTo
   // Programmes are the source of truth for assignments.
   const assignedTo = Array.isArray(exercise.assignedTo) ? exercise.assignedTo : [];
@@ -504,6 +521,33 @@ function syncExerciseAssignmentsToProgrammes(exercise) {
   setStorageData(STORAGE_KEYS.PROGRAMMES, updated);
 }
 
+function syncExerciseFieldsIntoProgrammes(exercise) {
+  const programmes = getProgrammes();
+  const id = normalizeId(exercise.id);
+  if (!id) return;
+
+  const updated = programmes.map((p) => {
+    const list = Array.isArray(p.exercises) ? p.exercises : [];
+    const changed = list.map((ex) => {
+      if (normalizeId(ex?.id) !== id) return ex;
+
+      // Update core fields used on Home/Programme screens
+      return {
+        ...ex,
+        name: exercise.name,
+        sets: exercise.sets,
+        repScheme: exercise.repScheme,
+        goalReps: exercise.goalReps,
+        restTime: exercise.restTime,
+        notes: exercise.notes,
+      };
+    });
+
+    return { ...p, exercises: changed };
+  });
+
+  setStorageData(STORAGE_KEYS.PROGRAMMES, updated);
+}
 
 // =====================
 // Progression Settings
