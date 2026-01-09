@@ -262,7 +262,7 @@ export const updateProgressionSettings = (settings) =>
   setStorageData(STORAGE_KEYS.PROGRESSION_SETTINGS, settings);
 
 // =====================
-// Nuclear option
+// Force Update
 // =====================
 export const resetAllLocalData = async () => {
   Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
