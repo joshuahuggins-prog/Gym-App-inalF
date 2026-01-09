@@ -421,25 +421,39 @@ export const getExercises = () => {
 };
 
 export const saveExercise = (exercise) => {
-  const exercises = getStorageData(STORAGE_KEYS.EXERCISES) || [];
   const id = normalizeId(exercise?.id);
   if (!id) return false;
 
+  // --- 1) Save exercise into catalogue (but don't trust assignedTo as source of truth)
+  const exercises = getStorageData(STORAGE_KEYS.EXERCISES) || [];
   const idx = exercises.findIndex((e) => normalizeId(e.id) === id);
+
   if (idx !== -1) {
     const prev = exercises[idx];
     exercises[idx] = {
       ...prev,
       ...exercise,
       id,
-      hidden:
-        typeof exercise.hidden === "boolean" ? exercise.hidden : prev.hidden,
+      hidden: typeof exercise.hidden === "boolean" ? exercise.hidden : prev.hidden,
     };
   } else {
     exercises.push({ ...exercise, id });
   }
 
-  return setStorageData(STORAGE_KEYS.EXERCISES, exercises);
+  // --- 2) IMPORTANT: sync programmes based on exercise.assignedTo
+  // Programmes are the source of truth for assignments.
+  const assignedTo = Array.isArray(exercise.assignedTo) ? exercise.assignedTo : [];
+  syncExerciseAssignmentsToProgrammes({ ...exercise, id, assignedTo });
+
+  // --- 3) Persist exercises and rebuild catalogue (so assignedTo is re-derived cleanly)
+  setStorageData(STORAGE_KEYS.EXERCISES, exercises);
+
+  // Rebuild catalogue so assignments are consistent everywhere
+  const programmes = getProgrammes();
+  const merged = rebuildExerciseCatalogue(programmes, exercises);
+  setStorageData(STORAGE_KEYS.EXERCISES, merged);
+
+  return true;
 };
 
 export const deleteExercise = (id) => {
@@ -449,6 +463,47 @@ export const deleteExercise = (id) => {
   );
   return setStorageData(STORAGE_KEYS.EXERCISES, filtered);
 };
+
+// Sync Exercise Assignment to Programme Helper
+function syncExerciseAssignmentsToProgrammes(exercise) {
+  const programmes = getProgrammes();
+  const id = normalizeId(exercise.id);
+  if (!id) return;
+
+  const wantTypes = new Set((exercise.assignedTo || []).map((t) => String(t).toUpperCase()));
+
+  const updated = programmes.map((p) => {
+    const type = String(p.type).toUpperCase();
+    const list = Array.isArray(p.exercises) ? [...p.exercises] : [];
+
+    const has = list.some((ex) => normalizeId(ex?.id) === id);
+    const shouldHave = wantTypes.has(type);
+
+    // If programme should contain exercise, add it (with sensible fields)
+    if (shouldHave && !has) {
+      list.push({
+        id,
+        name: exercise.name,
+        sets: exercise.sets ?? 3,
+        repScheme: exercise.repScheme ?? "RPT",
+        goalReps: Array.isArray(exercise.goalReps) ? exercise.goalReps : [8, 10, 12],
+        restTime: exercise.restTime ?? 120,
+        notes: exercise.notes ?? "",
+      });
+    }
+
+    // If programme should NOT contain exercise, remove it
+    if (!shouldHave && has) {
+      const filtered = list.filter((ex) => normalizeId(ex?.id) !== id);
+      return { ...p, exercises: filtered };
+    }
+
+    return { ...p, exercises: list };
+  });
+
+  setStorageData(STORAGE_KEYS.PROGRAMMES, updated);
+}
+
 
 // =====================
 // Progression Settings
