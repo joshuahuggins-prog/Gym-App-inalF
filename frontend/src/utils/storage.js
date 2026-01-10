@@ -26,6 +26,26 @@ export const STORAGE_KEYS = {
 // =====================
 // Helpers
 // =====================
+const APP_KEY_PREFIX = "gym_app_phase__"; // <-- unique per app/repo
+
+const k = (key) => `${APP_KEY_PREFIX}${key}`;
+
+export const setItem = (key, value) =>
+  localStorage.setItem(k(key), JSON.stringify(value));
+
+export const getItem = (key, fallback) => {
+  const raw = localStorage.getItem(k(key));
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+};
+
+export const removeItem = (key) => localStorage.removeItem(k(key));
+
+
 const normalizeId = (s) => (s || "").toString().trim();
 const toLegacyKey = (s) =>
   (s || "")
