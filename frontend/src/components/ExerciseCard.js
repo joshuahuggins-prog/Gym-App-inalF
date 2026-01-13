@@ -1,150 +1,223 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Circle, ChevronDown, ChevronUp, Video, Dumbbell, RefreshCw, Edit2 } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
-import { Badge } from '../components/ui/badge';
-import { calculateRPTWeights, shouldLevelUp, EXERCISE_ALTERNATIVES } from '../data/workoutData';
-import { useSettings } from '../contexts/SettingsContext';
-import { getVideoLinks, updateVideoLink, getProgressionSettings } from '../utils/storage';
-import WarmupCalculator from './WarmupCalculator';
-import PlateCalculator from './PlateCalculator';
+// frontend/src/components/ExerciseCard.js
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Timer, Award, Video, Shuffle } from "lucide-react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { Badge } from "./ui/badge";
+import { toast } from "sonner";
 
-const ExerciseCard = ({ exercise, onSetComplete, onWeightChange, onNotesChange, onRestTimer, isFirst, lastWorkoutData }) => {
-  const { weightUnit } = useSettings();
-  const [expanded, setExpanded] = useState(true);
-  const [sets, setSets] = useState(
-    Array(exercise.sets).fill(null).map((_, index) => ({
-      setNumber: index + 1,
-      weight: 0,
-      reps: 0,
-      completed: false,
-      goalReps: exercise.goalReps[index] || exercise.goalReps[0]
-    }))
+import {
+  getProgressionSettings,
+  getVideoLinks,
+  getPersonalRecords,
+} from "../utils/storage";
+
+// ✅ pull alternatives from your workoutData
+import { EXERCISE_ALTERNATIVES } from "../data/workoutData";
+
+const clampInt = (n, min, max) => Math.max(min, Math.min(max, Math.trunc(n)));
+
+const normalizeGoalReps = (goalReps, count) => {
+  const arr = Array.isArray(goalReps) ? goalReps : [];
+  const base = arr.length ? arr : [8];
+  if (base.length < count) return [...base, ...Array.from({ length: count - base.length }, () => base[base.length - 1] ?? 8)];
+  if (base.length > count) return base.slice(0, count);
+  return base;
+};
+
+const normalizeSets = (setsData, count) => {
+  const base = Array.isArray(setsData) ? setsData : [];
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const s = base[i] || {};
+    out.push({
+      weight: s.weight ?? "",
+      reps: s.reps ?? "",
+      completed: !!s.completed,
+    });
+  }
+  return out;
+};
+
+const ExerciseCard = ({
+  exercise,
+  lastWorkoutData,
+  onSetComplete,
+  onWeightChange,
+  onNotesChange,
+  onRestTimer,
+}) => {
+  const setsCount = clampInt(Number(exercise?.sets ?? 3), 1, 12);
+  const goalReps = useMemo(() => normalizeGoalReps(exercise?.goalReps, setsCount), [exercise?.goalReps, setsCount]);
+
+  const [expanded, setExpanded] = useState(false);
+  const [notes, setNotes] = useState(exercise?.userNotes || "");
+  const [videoLink, setVideoLink] = useState("");
+  const [sets, setSets] = useState(() => normalizeSets(exercise?.setsData, setsCount));
+
+  // ✅ assisted if any weight is negative
+  const [mode, setMode] = useState(() =>
+    (exercise?.setsData || []).some((s) => Number(s.weight) < 0) ? "assisted" : "weighted"
   );
-  const [notes, setNotes] = useState(exercise.notes || '');
-  const [showWarmup, setShowWarmup] = useState(false);
-  const [showPlates, setShowPlates] = useState(false);
-  const [selectedWeight, setSelectedWeight] = useState(0);
+
+  // ✅ alternatives panel
   const [showAlternatives, setShowAlternatives] = useState(false);
-  const [showVideoEdit, setShowVideoEdit] = useState(false);
-  const [videoLink, setVideoLink] = useState('');
-  
-  // Get suggested weights from last workout
-  const getSuggestedWeight = (setIndex) => {
-    if (!lastWorkoutData || !lastWorkoutData.sets || !lastWorkoutData.sets[setIndex]) {
-      return null;
-    }
-    return lastWorkoutData.sets[setIndex].weight;
-  };
 
+  const hydrateKey = useRef("");
+
+  // PR from storage (display only)
+  const pr = useMemo(() => {
+    const prs = getPersonalRecords?.() || {};
+    return prs[exercise?.id] || null;
+  }, [exercise?.id]);
+
+  // best weight from THIS workout (for display label)
+  const bestFromWorkout = useMemo(() => {
+    const nums = (sets || [])
+      .map((s) => (s.weight === "" ? null : Number(s.weight)))
+      .filter((n) => Number.isFinite(n));
+    if (!nums.length) return null;
+    return Math.max(...nums.map((n) => Math.abs(n)));
+  }, [sets]);
+
+  // hydrate on exercise updates
   useEffect(() => {
+    const key = `${exercise?.id || ""}__${setsCount}__${JSON.stringify(exercise?.setsData || [])}__${JSON.stringify(goalReps)}`;
+    if (key === hydrateKey.current) return;
+    hydrateKey.current = key;
+
+    setSets(normalizeSets(exercise?.setsData, setsCount));
+    setNotes(exercise?.userNotes || "");
+    setMode((exercise?.setsData || []).some((s) => Number(s.weight) < 0) ? "assisted" : "weighted");
+
     const links = getVideoLinks();
-    const key = exercise.id;
-    setVideoLink(links[key] || '');
-  }, [exercise.id]);
+    setVideoLink(links?.[exercise?.id] || "");
 
-  const handleSetComplete = (setIndex) => {
-    const newSets = [...sets];
-    const currentSet = newSets[setIndex];
-    
-    if (!currentSet.completed) {
-      currentSet.completed = true;
-      
-      // Check for level up on first set
-      if (setIndex === 0 && shouldLevelUp(currentSet.reps, currentSet.goalReps)) {
-        onSetComplete?.(exercise, currentSet, true);
-      } else {
-        onSetComplete?.(exercise, currentSet, false);
-      }
-      
-      // Start rest timer
-      if (setIndex < sets.length - 1) {
-        onRestTimer?.(exercise.restTime);
-      }
-    } else {
-      currentSet.completed = false;
-    }
-    
-    setSets(newSets);
+    // don’t force-open alternatives on hydrate
+    setShowAlternatives(false);
+  }, [exercise, setsCount, goalReps]);
+
+  const pushUp = (nextSets) => {
+    setSets(nextSets);
+
+    onWeightChange?.(
+      exercise,
+      nextSets.map((s) => ({
+        weight: s.weight === "" ? "" : Number(s.weight),
+        reps: s.reps === "" ? "" : Number(s.reps),
+        completed: !!s.completed,
+      }))
+    );
   };
 
-  const handleWeightChange = (setIndex, value) => {
-    const newSets = [...sets];
-    newSets[setIndex].weight = parseFloat(value) || 0;
-    
-    // Auto-calculate RPT weights for subsequent sets
-    if (exercise.repScheme === 'RPT' && setIndex === 0) {
-      const progressionSettings = getProgressionSettings();
-      for (let i = 1; i < newSets.length; i++) {
-        newSets[i].weight = calculateRPTWeights(newSets[0].weight, i + 1, progressionSettings);
-      }
-    }
-    
-    setSets(newSets);
-    onWeightChange?.(exercise, newSets);
+  const toggleMode = (nextMode) => {
+    if (nextMode === mode) return;
+    setMode(nextMode);
+
+    const converted = sets.map((s) => {
+      if (s.weight === "") return s;
+      const v = Math.abs(Number(s.weight));
+      return { ...s, weight: nextMode === "assisted" ? -v : v };
+    });
+
+    pushUp(converted);
   };
 
-  const handleRepsChange = (setIndex, value) => {
-    const newSets = [...sets];
-    newSets[setIndex].reps = parseInt(value) || 0;
-    setSets(newSets);
-  };
+  const completedCount = useMemo(() => sets.filter((s) => s.completed).length, [sets]);
 
-  const handleNotesBlur = () => {
-    onNotesChange?.(exercise, notes);
-  };
+  const maxLabel = useMemo(() => {
+    const best = pr?.weight != null ? Math.abs(Number(pr.weight)) : bestFromWorkout;
+    if (!Number.isFinite(best) || best === 0) return null;
+    const label = mode === "assisted" ? "Assist max" : "Max";
+    return `${label}: ${best}`;
+  }, [pr, bestFromWorkout, mode]);
 
-  const handleVideoUpdate = () => {
-    updateVideoLink(exercise.id, videoLink);
-    setShowVideoEdit(false);
-  };
-
-  const completedSets = sets.filter(s => s.completed).length;
-  const levelUp = sets[0]?.completed && shouldLevelUp(sets[0].reps, sets[0].goalReps);
+  const alternatives = useMemo(() => {
+    if (!exercise?.id) return [];
+    const list = EXERCISE_ALTERNATIVES?.[exercise.id];
+    return Array.isArray(list) ? list : [];
+  }, [exercise?.id]);
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
       {/* Header */}
-      <div
-        className="p-4 cursor-pointer select-none"
-        onClick={() => setExpanded(!expanded)}
+      <button
+        type="button"
+        className="w-full text-left p-4"
+        onClick={() => setExpanded((v) => !v)}
       >
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-lg font-bold text-foreground">{exercise.name}</h3>
-              {levelUp && (
-                <Badge className="bg-gold text-gold-foreground font-semibold animate-bounce-slow">
-                  Level Up! +5{weightUnit}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold truncate text-foreground">
+              {exercise?.name || "Exercise"}
+            </h3>
+
+            {/* Row 2 */}
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>
+                {completedCount}/{setsCount} sets
+              </span>
+
+              {exercise?.repScheme ? (
+                <Badge variant="secondary" className="text-[10px]">
+                  {exercise.repScheme}
                 </Badge>
+              ) : null}
+
+              {pr?.weight != null && (
+                <span className="text-foreground font-semibold">
+                  PR: {pr.weight} × {pr.reps}
+                </span>
               )}
             </div>
-            <div className="flex flex-wrap gap-2 text-sm">
-              <Badge variant="outline" className="text-primary border-primary/50">
-                {exercise.repScheme}
-              </Badge>
-              <span className="text-muted-foreground">
-                {completedSets}/{exercise.sets} sets
-              </span>
-              <span className="text-muted-foreground">•</span>
-              <span className="text-muted-foreground">
-                {exercise.restTime}s rest
-              </span>
+
+            {/* Row 3: toggle ALWAYS in same place */}
+            <div
+              className="mt-2 inline-flex border border-border rounded-md overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className={`px-2 py-1 text-[11px] ${
+                  mode === "weighted"
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:bg-muted/40"
+                }`}
+                onClick={() => toggleMode("weighted")}
+              >
+                Weighted
+              </button>
+              <button
+                type="button"
+                className={`px-2 py-1 text-[11px] ${
+                  mode === "assisted"
+                    ? "bg-orange-500/20 text-orange-600"
+                    : "text-muted-foreground hover:bg-muted/40"
+                }`}
+                onClick={() => toggleMode("assisted")}
+              >
+                Assisted
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {videoLink && (
-              <button
+
+          {/* Right-side icons */}
+          <div className="flex items-center gap-1 shrink-0">
+            {videoLink ? (
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.open(videoLink, '_blank');
+                  window.open(videoLink, "_blank", "noopener,noreferrer");
                 }}
-                className="p-2 hover:bg-muted rounded-lg transition-colors"
+                title="Open form video"
               >
-                <Video className="w-5 h-5 text-primary" />
-              </button>
-            )}
+                <Video className="w-4 h-4" />
+              </Button>
+            ) : null}
+
             {expanded ? (
               <ChevronUp className="w-5 h-5 text-muted-foreground" />
             ) : (
@@ -152,203 +225,181 @@ const ExerciseCard = ({ exercise, onSetComplete, onWeightChange, onNotesChange, 
             )}
           </div>
         </div>
-      </div>
+      </button>
 
+      {/* Body */}
       {expanded && (
-        <div className="px-4 pb-4 space-y-4 animate-fadeIn">
-          {/* Action Buttons */}
+        <div className="px-4 pb-4 space-y-3">
+          {/* label ABOVE sets */}
+          {maxLabel && (
+            <div className="text-xs text-muted-foreground">
+              <span
+                className={
+                  mode === "assisted"
+                    ? "text-orange-600 font-semibold"
+                    : "text-foreground font-semibold"
+                }
+              >
+                {maxLabel}
+              </span>
+            </div>
+          )}
+
+          {/* Sets */}
+          <div className="space-y-2">
+            {sets.map((s, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-[60px_1fr_1fr_40px] gap-2 items-center"
+              >
+                <span className="text-xs text-muted-foreground">Set {i + 1}</span>
+
+                <Input
+                  type="number"
+                  value={s.weight === "" ? "" : Math.abs(Number(s.weight))}
+                  placeholder={mode === "assisted" ? "Assist" : "Weight"}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const next = [...sets];
+
+                    if (raw === "") {
+                      next[i] = { ...s, weight: "" };
+                      pushUp(next);
+                      return;
+                    }
+
+                    const n = Number(raw);
+                    if (!Number.isFinite(n)) return;
+
+                    next[i] = { ...s, weight: mode === "assisted" ? -n : n };
+                    pushUp(next);
+                  }}
+                />
+
+                <Input
+                  type="number"
+                  value={s.reps}
+                  // ✅ restore “goal reps as grey hint”
+                  placeholder={`${goalReps[i] ?? 8}`}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const next = [...sets];
+                    next[i] = { ...s, reps: raw === "" ? "" : Number(raw) };
+                    pushUp(next);
+                  }}
+                />
+
+                <Button
+                  size="sm"
+                  variant={s.completed ? "default" : "outline"}
+                  onClick={() => {
+                    const next = [...sets];
+                    next[i] = { ...s, completed: !s.completed };
+                    pushUp(next);
+                    onSetComplete?.(exercise, next[i], false);
+
+                    // ✅ start timer only when marking complete (and not last set)
+                    if (!s.completed && i < sets.length - 1) {
+                      onRestTimer?.(exercise?.restTime ?? 120);
+                    }
+                  }}
+                  title={s.completed ? "Completed" : "Mark completed"}
+                >
+                  ✓
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          {/* Notes input (user notes) */}
+          <Textarea
+            value={notes}
+            placeholder="Notes…"
+            className="min-h-[70px]"
+            onChange={(e) => setNotes(e.target.value)}
+            onBlur={() => onNotesChange?.(exercise, notes)}
+          />
+
+          {/* ✅ Exercise info notes (template notes) */}
+          {exercise?.notes ? (
+            <div className="text-xs text-muted-foreground p-3 bg-muted/30 rounded-lg border border-border">
+              {exercise.notes}
+            </div>
+          ) : null}
+
+          {/* Actions */}
           <div className="flex flex-wrap gap-2">
-            {isFirst && (
+            {alternatives.length ? (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowWarmup(true)}
-                disabled={!sets[0]?.weight}
+                onClick={() => setShowAlternatives((v) => !v)}
               >
-                <Dumbbell className="w-4 h-4 mr-2" />
-                Warmup
+                <Shuffle className="w-4 h-4 mr-1" />
+                Alternatives
               </Button>
-            )}
+            ) : null}
+
+            {onRestTimer ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onRestTimer?.(exercise?.restTime ?? 120)}
+              >
+                <Timer className="w-4 h-4 mr-1" />
+                Rest
+              </Button>
+            ) : null}
+
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                setSelectedWeight(sets[0]?.weight || 0);
-                setShowPlates(true);
+                const p = getProgressionSettings();
+                const inc = p.exerciseSpecific?.[exercise.id];
+                toast.message("Progression", {
+                  description: inc
+                    ? `Exercise increment: ${inc}`
+                    : "Global progression applies",
+                });
               }}
-              disabled={!sets[0]?.weight}
             >
-              Plates
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAlternatives(!showAlternatives)}
-            >
-              Alternatives
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowVideoEdit(!showVideoEdit)}
-            >
-              <Edit2 className="w-4 h-4 mr-2" />
-              Video
+              <Award className="w-4 h-4 mr-1" />
+              Progression
             </Button>
           </div>
 
-          {/* Video Edit */}
-          {showVideoEdit && (
-            <div className="p-3 bg-muted/50 rounded-lg border border-border space-y-2">
-              <label className="text-sm font-medium text-foreground">Form Check Video URL</label>
-              <div className="flex gap-2">
-                <Input
-                  value={videoLink}
-                  onChange={(e) => setVideoLink(e.target.value)}
-                  placeholder="https://youtube.com/..."
-                  className="flex-1"
-                />
-                <Button size="sm" onClick={handleVideoUpdate}>
-                  Save
-                </Button>
+          {/* Alternatives panel */}
+          {showAlternatives && alternatives.length ? (
+            <div className="p-3 bg-muted/30 rounded-lg border border-border">
+              <div className="text-sm font-medium text-foreground mb-2">
+                Alternatives
               </div>
-            </div>
-          )}
-
-          {/* Alternatives */}
-          {showAlternatives && EXERCISE_ALTERNATIVES[exercise.id] && (
-            <div className="p-3 bg-muted/50 rounded-lg border border-border">
-              <div className="text-sm font-medium text-foreground mb-2">Alternative Exercises:</div>
               <div className="flex flex-wrap gap-2">
-                {EXERCISE_ALTERNATIVES[exercise.id].map((alt, index) => (
-                  <Badge key={index} variant="secondary">
+                {alternatives.map((alt, idx) => (
+                  <Badge key={`${exercise.id}-alt-${idx}`} variant="secondary">
                     {alt}
                   </Badge>
                 ))}
               </div>
+              <div className="text-xs text-muted-foreground mt-2">
+                (This is read-only for now — we can wire swapping later.)
+              </div>
             </div>
-          )}
+          ) : null}
 
-          {/* Sets - Simple Box Layout */}
-          <div className="grid grid-cols-1 gap-3">
-            {sets.map((set, index) => {
-              const suggestedWeight = getSuggestedWeight(index);
-              
-              return (
-                <div
-                  key={index}
-                  className={`p-4 rounded-lg border transition-all duration-200 ${
-                    set.completed
-                      ? 'bg-primary/10 border-primary/50'
-                      : 'bg-muted/30 border-border'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Set Number - Now clickable to complete */}
-                    <button
-                      onClick={() => handleSetComplete(index)}
-                      disabled={!set.weight || !set.reps}
-                      className={`flex-shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-xl transition-all duration-200 ${
-                        set.completed
-                          ? 'bg-primary border-primary text-primary-foreground shadow-lg scale-105'
-                          : 'bg-primary/10 border-primary/50 text-primary hover:bg-primary/20 hover:scale-105'
-                      } ${!set.weight || !set.reps ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                    >
-                      {set.completed ? '✓' : index + 1}
-                    </button>
-
-                    {/* Weight Input - Now wider */}
-                    <div className="flex-1">
-                      <label className="text-xs text-muted-foreground block mb-1">
-                        Weight ({weightUnit})
-                      </label>
-                      <Input
-                        type="number"
-                        value={set.weight || ''}
-                        onChange={(e) => handleWeightChange(index, e.target.value)}
-                        placeholder={suggestedWeight ? suggestedWeight.toString() : '0'}
-                        className="h-12 text-center text-lg font-semibold"
-                        disabled={set.completed}
-                        step="2.5"
-                      />
-                      {suggestedWeight && !set.weight && (
-                        <div className="text-xs text-muted-foreground mt-1 text-center">
-                          Last: {suggestedWeight}{weightUnit}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Reps Input */}
-                    <div className="flex-1">
-                      <label className="text-xs text-muted-foreground block mb-1">
-                        Reps
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={set.reps || ''}
-                          onChange={(e) => handleRepsChange(index, e.target.value)}
-                          placeholder={set.goalReps.toString()}
-                          className="h-12 text-center text-lg font-semibold w-16"
-                          disabled={set.completed}
-                        />
-                        <span className="text-muted-foreground whitespace-nowrap">/ {set.goalReps}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {exercise.repScheme === 'RPT' && index === 0 && set.weight > 0 && (() => {
-                    const progressionSettings = getProgressionSettings();
-                    const set2Weight = calculateRPTWeights(set.weight, 2, progressionSettings);
-                    const set3Weight = calculateRPTWeights(set.weight, 3, progressionSettings);
-                    return (
-                      <div className="mt-2 text-xs text-muted-foreground text-center">
-                        Auto: Set 2 = {set2Weight}{weightUnit}, Set 3 = {set3Weight}{weightUnit}
-                      </div>
-                    );
-                  })()}
+          {/* Last workout */}
+          {lastWorkoutData ? (
+            <div className="text-xs text-muted-foreground border border-border rounded-lg p-3 bg-muted/20">
+              <div className="font-semibold text-foreground mb-1">Last time</div>
+              {(lastWorkoutData.sets || []).map((s2, i2) => (
+                <div key={i2}>
+                  Set {i2 + 1}: {s2.weight} × {s2.reps}
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-2">
-              Notes
-            </label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              onBlur={handleNotesBlur}
-              placeholder="How did it feel? Any form notes?"
-              className="min-h-[80px] resize-none"
-            />
-          </div>
-
-          {/* Exercise Description */}
-          <div className="text-xs text-muted-foreground p-3 bg-muted/30 rounded-lg border border-border">
-            {exercise.notes}
-          </div>
+              ))}
+            </div>
+          ) : null}
         </div>
-      )}
-
-      {/* Modals */}
-      {showWarmup && (
-        <WarmupCalculator
-          exercise={exercise.name}
-          topSetWeight={sets[0]?.weight || 0}
-          open={showWarmup}
-          onClose={() => setShowWarmup(false)}
-        />
-      )}
-
-      {showPlates && (
-        <PlateCalculator
-          weight={selectedWeight}
-          open={showPlates}
-          onClose={() => setShowPlates(false)}
-        />
       )}
     </div>
   );
