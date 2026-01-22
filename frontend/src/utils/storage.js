@@ -205,11 +205,26 @@ export const deleteWorkout = (id) => {
 // =====================
 // Settings
 // =====================
-export const getSettings = () =>
-  getStorageData(STORAGE_KEYS.SETTINGS) || {
+export const getSettings = () => {
+  const defaults = {
     weightUnit: "kg",
-    theme: "dark",
+    colorMode: "dark", // "light" | "dark"
+    colorTheme: "blue", // "blue" | "yellow" | "green" | "red"
   };
+
+  const stored = getStorageData(STORAGE_KEYS.SETTINGS);
+  if (!stored) return defaults;
+
+  // Backwards compatible: older versions used "theme" to mean dark mode
+  const legacyColorMode =
+    stored.theme === "light" || stored.theme === "dark" ? stored.theme : undefined;
+
+  return {
+    ...defaults,
+    ...stored,
+    ...(legacyColorMode ? { colorMode: legacyColorMode } : {}),
+  };
+};
 
 export const updateSettings = (updates) => {
   const settings = getSettings();
