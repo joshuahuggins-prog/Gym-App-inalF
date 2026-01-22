@@ -7,10 +7,22 @@ import {
   Save,
   Settings as SettingsIcon,
   TrendingUp,
+  Palette,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Switch } from "../components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { useSettings } from "../contexts/SettingsContext";
 import { toast } from "sonner";
 
@@ -34,7 +46,7 @@ const numberOrFallback = (value, fallback) => {
 };
 
 const SettingsPage = () => {
-  const { weightUnit, toggleWeightUnit } = useSettings();
+  const { weightUnit, toggleWeightUnit, colorMode, colorTheme, setColorMode, setColorTheme } = useSettings();
 
   const [progressionSettings, setProgressionSettings] = useState(null);
   const [workoutPattern, setWorkoutPatternState] = useState("");
@@ -123,7 +135,53 @@ const SettingsPage = () => {
         </Button>
       </section>
 
-      {/* ===== Progression Settings ===== */}
+      
+      {/* ===== Appearance ===== */}
+      <section className="space-y-3">
+        <h2 className="font-semibold flex items-center gap-2">
+          <Palette className="h-4 w-4" />
+          Appearance
+        </h2>
+
+        <div className="rounded-xl border border-border bg-card/50 p-4 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                {colorMode === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                <div className="font-medium">Dark mode</div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Toggle between light and dark UI.
+              </div>
+            </div>
+
+            <Switch
+              checked={colorMode === "dark"}
+              onCheckedChange={(checked) => setColorMode(checked ? "dark" : "light")}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm">Colour theme</Label>
+            <Select value={colorTheme || "blue"} onValueChange={(v) => setColorTheme(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a theme" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="blue">Blue</SelectItem>
+                <SelectItem value="yellow">Yellow</SelectItem>
+                <SelectItem value="green">Green</SelectItem>
+                <SelectItem value="red">Red</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="text-xs text-muted-foreground">
+              The background, cards and accents tint to match your chosen colour.
+            </div>
+          </div>
+        </div>
+      </section>
+{/* ===== Progression Settings ===== */}
       <section className="space-y-3">
         <h2 className="font-semibold flex items-center gap-2">
           <Save className="h-4 w-4" />
