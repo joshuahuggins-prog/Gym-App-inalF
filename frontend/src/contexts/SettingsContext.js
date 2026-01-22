@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { getSettings, updateSettings } from '../utils/storage';
 
 const SettingsContext = React.createContext();
@@ -20,6 +20,7 @@ export const SettingsProvider = ({ children }) => {
     updateSettings(newSettings);
   };
 
+  // ---- Units ----
   const toggleWeightUnit = () => {
     const newUnit = settings.weightUnit === 'lbs' ? 'kg' : 'lbs';
     updateSetting('weightUnit', newUnit);
@@ -36,14 +37,32 @@ export const SettingsProvider = ({ children }) => {
     return weight;
   };
 
+  // ---- Theme (mode + colour) ----
+  const setColorMode = (mode) => updateSetting('colorMode', mode);
+  const toggleColorMode = () =>
+    updateSetting('colorMode', settings.colorMode === 'dark' ? 'light' : 'dark');
+
+  const setColorTheme = (theme) => updateSetting('colorTheme', theme);
+
   return (
-    <SettingsContext.Provider value={{
-      settings,
-      updateSetting,
-      toggleWeightUnit,
-      convertWeight,
-      weightUnit: settings.weightUnit
-    }}>
+    <SettingsContext.Provider
+      value={{
+        settings,
+        updateSetting,
+
+        // units
+        toggleWeightUnit,
+        convertWeight,
+        weightUnit: settings.weightUnit,
+
+        // theme
+        colorMode: settings.colorMode,
+        colorTheme: settings.colorTheme,
+        setColorMode,
+        toggleColorMode,
+        setColorTheme,
+      }}
+    >
       {children}
     </SettingsContext.Provider>
   );
